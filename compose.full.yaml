@@ -1,0 +1,41 @@
+name: fixflow-system
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: fixflow
+      POSTGRES_USER: fixflow
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env}
+    volumes: ["fixflow_pg:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fixflow -d fixflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+  backend:
+    build: .
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_ADDRESS: 0.0.0.0
+      DATABASE_URL: jdbc:postgresql://postgres:5432/fixflow
+      DATABASE_USER: fixflow
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env}
+      FIXFLOW_JWT_SECRET: ${FIXFLOW_JWT_SECRET:?Set FIXFLOW_JWT_SECRET in .env}
+      FIXFLOW_ADMIN_EMAIL: ${FIXFLOW_ADMIN_EMAIL:?Set FIXFLOW_ADMIN_EMAIL in .env}
+      FIXFLOW_ADMIN_PASSWORD: ${FIXFLOW_ADMIN_PASSWORD:?Set FIXFLOW_ADMIN_PASSWORD in .env}
+      FIXFLOW_REDIS_ENABLED: "true"
+      REDIS_HOST: redis
+    volumes: ["fixflow_uploads:/app/data"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+  web:
+    build: ./frontend
+    ports: ["127.0.0.1:8090:80"]
+    depends_on: [backend]
+volumes:
+  fixflow_pg:
+  fixflow_uploads:

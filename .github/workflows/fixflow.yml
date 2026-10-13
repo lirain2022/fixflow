@@ -1,0 +1,37 @@
+name: FixFlow checks
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_DB: fixflowtest, POSTGRES_USER: fixflowtest, POSTGRES_PASSWORD: test-only }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fixflowtest"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '21', cache: maven}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: npm, cache-dependency-path: frontend/package-lock.json}
+      - name: H2 integration tests and package
+        run: mvn -B verify
+      - name: PostgreSQL integration tests
+        run: mvn -B test -Dtest=FixFlowIntegrationTest -Dspring.datasource.url=jdbc:postgresql://localhost:5432/fixflowtest -Dspring.datasource.username=fixflowtest -Dspring.datasource.password=test-only
+      - name: Frontend checks
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npx vite build --config vite.system.config.js
+      - name: Browser workflow
+        run: |
+          java -jar target/taskflow-0.0.1-SNAPSHOT.jar --spring.profiles.active=complete > backend.log 2>&1 &
+          cd frontend
+          npx playwright install --with-deps chrome
+          node node_modules/vite/bin/vite.js --config vite.system.config.js > vite.log 2>&1 &
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8080/hello && break; sleep 1; done
+          npx playwright test --config playwright.system.config.js

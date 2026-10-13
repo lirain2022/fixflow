@@ -1,0 +1,1 @@
+ALTER TABLE ff_users ADD COLUMN auth_version BIGINT NOT NULL DEFAULT 0;

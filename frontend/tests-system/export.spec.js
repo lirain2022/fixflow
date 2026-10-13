@@ -1,0 +1,46 @@
+import {test,expect} from '@playwright/test';
+import {readFile} from 'node:fs/promises';
+
+test('filtered CSV download matches the list and works on mobile',async({page,request})=>{
+  const auth=await request.post('/api/auth/login',{data:{email:'admin@fixflow.local',password:'FixFlow123!'}});
+  expect(auth.ok()).toBeTruthy();const {token}=await auth.json();const headers={Authorization:`Bearer ${token}`};
+  const staff=await request.get('/api/users/technicians',{headers});const technician=(await staff.json()).find(u=>u.email==='tech@fixflow.local');
+  const marker=`報表驗證 ${Date.now()}`;
+  const make=async(priority)=>{
+    const response=await request.post('/api/tickets',{headers,data:{title:`${marker} ${priority}`,description:'中文報表內容',location:'資訊室',category:'NETWORK',priority}});
+    expect(response.status()).toBe(201);return response.json();
+  };
+  const high=await make('HIGH'),low=await make('LOW');
+  expect((await request.patch(`/api/tickets/${high.id}/assign`,{headers,data:{technicianId:technician.id}})).ok()).toBeTruthy();
+  await page.goto('/system.html');await page.getByLabel('Email',{exact:true}).fill('admin@fixflow.local');await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await page.getByRole('button',{name:'登入',exact:true}).click();
+  await page.getByRole('button',{name:'工單中心',exact:true}).click();
+  await page.getByRole('textbox',{name:'搜尋工單'}).fill(marker);
+  await expect(page.getByRole('button',{name:'匯出 CSV'})).toBeDisabled();
+  await page.getByRole('button',{name:'搜尋',exact:true}).click();
+  await expect(page.locator('.ticket-link:visible').first()).toHaveText(low.title);
+  await page.getByRole('combobox',{name:'工單排序'}).selectOption('PRIORITY');
+  await expect(page.locator('.ticket-link:visible').first()).toHaveText(high.title);
+  await page.getByRole('combobox',{name:'工單優先級'}).selectOption('HIGH');
+  await page.getByRole('combobox',{name:'處理人員'}).selectOption(String(technician.id));
+  await expect(page.locator('.ticket-link:visible')).toHaveCount(1);
+  await expect(page.locator('.ticket-link:visible')).toHaveText(high.title);
+  await page.getByRole('combobox',{name:'工單優先級'}).selectOption('LOW');
+  await expect(page.getByRole('heading',{name:'目前沒有符合條件的工單'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'匯出 CSV'})).toBeDisabled();
+  await page.getByRole('combobox',{name:'工單優先級'}).selectOption('HIGH');
+  await expect(page.getByRole('button',{name:'匯出 CSV'})).toBeEnabled();
+  await page.screenshot({path:'test-results/export-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:'test-results/export-mobile.png',fullPage:true});
+  const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'匯出 CSV'}).click()]);
+  expect(download.suggestedFilename()).toMatch(/^fixflow-tickets-\d{4}-\d{2}-\d{2}\.csv$/);
+  const bytes=await readFile(await download.path());
+  expect([...bytes.subarray(0,3)]).toEqual([239,187,191]);
+  const csv=bytes.toString('utf8');expect(csv).toContain('工單編號');expect(csv).toContain(high.ticketNo);expect(csv).toContain('中文報表內容');expect(csv).not.toContain(low.ticketNo);
+  await page.route('**/api/tickets/export?*',route=>route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:'匯出最多 5,000 筆，請縮小篩選範圍後重試'})}));
+  await page.getByRole('button',{name:'匯出 CSV'}).click();await expect(page.getByRole('alert')).toContainText('請縮小篩選範圍');await expect(page.locator('.ticket-link:visible')).toHaveText(high.title);
+  await page.getByRole('button',{name:'清除條件'}).click();
+  await expect(page.getByRole('combobox',{name:'工單優先級'})).toHaveValue('');await expect(page.getByRole('combobox',{name:'處理人員'})).toHaveValue('');await expect(page.getByRole('textbox',{name:'搜尋工單'})).toHaveValue('');
+  await expect(page.getByRole('combobox',{name:'工單排序'})).toHaveValue('NEWEST');
+});
