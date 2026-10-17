@@ -17,6 +17,6 @@ test('assignment and repair notifications reach the correct roles and read state
     await open(owner,email);await expect(owner.locator('.notification-list')).toContainText('維修已完成，請查看紀錄並確認驗收');await expect(owner.getByRole('button',{name:'通知中心，3 則未讀'})).toBeVisible();
     await owner.setViewportSize({width:390,height:844});expect(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await owner.screenshot({path:'test-results/notifications-mobile.png',fullPage:true});
     await owner.getByRole('button',{name:'全部標為已讀'}).click();await expect(owner.getByRole('button',{name:'通知中心，0 則未讀'})).toBeVisible();await owner.reload();await owner.getByRole('button',{name:'通知中心，0 則未讀'}).click();await owner.getByRole('checkbox',{name:'只看未讀'}).check();await expect(owner.getByRole('heading',{name:'目前沒有未讀通知'})).toBeVisible();
-    await owner.getByRole('checkbox',{name:'只看未讀'}).uncheck();await owner.getByRole('button',{name:/^開啟通知/}).first().click();await expect(owner.locator('.detail-badges')).toContainText('待確認');await expect(owner.getByRole('dialog')).toContainText('Repair completed');
+    await owner.getByRole('checkbox',{name:'只看未讀'}).uncheck();await owner.getByRole('button',{name:/^開啟通知/}).first().click();await expect(owner.locator('.detail-badges')).toContainText('待驗收');await expect(owner.getByRole('dialog')).toContainText('Repair completed');
   }finally{await Promise.all(contexts.map(c=>c.close()));}
 });

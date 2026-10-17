@@ -63,3 +63,5 @@ frontend/playwright-report/
 *.pfx
 /uploads/
 *.zip
+
+/target-cost/

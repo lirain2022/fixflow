@@ -98,6 +98,28 @@ public class TicketService {
         entries.deleteAll(drafts);
         t.resolvedAt=Instant.now();TicketEntry repair=entry(t,actor,"REPAIR",input.description());RepairCosts.apply(repair,input);repair.startedAt=t.startedAt;repair.completedAt=t.resolvedAt;t.status=TicketStatus.RESOLVED;log(t,actor,"IN_PROGRESS → RESOLVED");notifications.publish(t,actor,"RESOLVED","維修已完成，請查看紀錄並確認驗收");return detail(t);
     }
+    public Map<String,Object> correctCosts(Long id,User actor,Requests.CostCorrection input){
+        Ticket t=find(id,actor,true);
+        if(t.status!=TicketStatus.RESOLVED&&t.status!=TicketStatus.CLOSED)throw new ApiException(409,"待驗收或已結案工單才能補登／更正費用；維修中請使用費用草稿");
+        if(!Objects.equals(t.version,input.version()))throw new ApiException(409,"工單已更新，請重新開啟後確認費用；本次更正尚未儲存");
+        var repairs=entries.findByTicketIdOrderByIdAsc(id).stream().filter(e->e.kind.equals("REPAIR")).toList();
+        TicketEntry repair;
+        if(input.repairId()==null){
+            if(!repairs.isEmpty())throw new ApiException(409,"已有維修紀錄，請選擇要更正的紀錄");
+            repair=entry(t,actor,"REPAIR","補登維修費用");
+            repair.startedAt=t.startedAt;
+            repair.completedAt=t.resolvedAt!=null?t.resolvedAt:t.closedAt!=null?t.closedAt:t.createdAt;
+        }else repair=repairs.stream().filter(e->e.id.equals(input.repairId())).findFirst().orElseThrow(ApiException::missing);
+        String beforeHours=costText(repair.workHours),beforeLabor=costText(repair.laborCost),beforeParts=costText(repair.partsCost),beforeTotal=costText(repair.totalCost);
+        repair.parts.clear();
+        RepairCosts.apply(repair,new Requests.Repair(repair.content,input.workHours(),input.laborCost(),input.parts(),input.version()));
+        entry(t,actor,"COST_CORRECTION","維修紀錄 #"+repair.id+" 費用更正\n工時："+beforeHours+" → "+costText(repair.workHours)+
+            "\n人工費："+beforeLabor+" → "+costText(repair.laborCost)+"\n零件費："+beforeParts+" → "+costText(repair.partsCost)+
+            "\n合計（NT$）："+beforeTotal+" → "+costText(repair.totalCost)+"\n原因："+input.reason().strip());
+        log(t,actor,"補登／更正維修紀錄 #"+repair.id+" 費用");
+        return detail(t);
+    }
+    private static String costText(java.math.BigDecimal value){return value==null?"未登錄":value.toPlainString();}
     public Map<String,Object> rework(Long id,User actor,String reason){
 
         // Same user -> ticket lock order as assignment/start/deactivation.
@@ -151,6 +173,7 @@ public class TicketService {
         result.put("repairDraft",timeline.stream().filter(e->e.kind.equals("REPAIR_DRAFT")).findFirst().map(this::entryView).orElse(null));
         result.put("repairCostSummary",Map.of("currency","TWD","recordedTotal",repairs.stream().map(e->e.totalCost).filter(Objects::nonNull).reduce(new java.math.BigDecimal("0.00"),java.math.BigDecimal::add),"recordedRepairs",priced,"unpricedRepairs",repairs.size()-priced));
         result.put("reworkRequests",timeline.stream().filter(e->e.kind.equals("REWORK")).map(this::entryView).toList());
+        result.put("costChanges",timeline.stream().filter(e->e.kind.equals("COST_CORRECTION")).map(this::entryView).toList());
         result.put("attachments",attachments.findByTicketIdOrderByIdAsc(t.id).stream().map(a->Map.of("id",a.id,"fileName",a.fileName,"size",a.size,"createdAt",a.createdAt)).toList());return result;
     }
     private Map<String,Object> entryView(TicketEntry e){Map<String,Object> m=new LinkedHashMap<>();m.put("id",e.id);m.put("content",e.content);m.put("author",e.author.getName());m.put("createdAt",e.createdAt);m.put("startedAt",e.startedAt);m.put("completedAt",e.completedAt);

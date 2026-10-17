@@ -27,4 +27,5 @@ public class TicketController {
     @PostMapping("/{id}/repair-records") @ResponseStatus(HttpStatus.CREATED) public Object repair(Authentication a,@PathVariable Long id,@Valid @RequestBody Requests.Repair input){return tickets.repair(id,auth.current(a),input);}
     @PutMapping("/{id}/repair-draft") public Object repairDraft(Authentication a,@PathVariable Long id,@Valid @RequestBody Requests.RepairDraft input){return tickets.saveRepairDraft(id,auth.current(a),input);}
     @PostMapping("/{id}/rework") public Object rework(Authentication a,@PathVariable Long id,@Valid @RequestBody Requests.Rework input){return tickets.rework(id,auth.current(a),input.reason());}
+    @PostMapping("/{id}/cost-corrections") public Object correctCosts(Authentication a,@PathVariable Long id,@Valid @RequestBody Requests.CostCorrection input){return tickets.correctCosts(id,auth.current(a),input);}
 }

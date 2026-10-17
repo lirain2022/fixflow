@@ -558,4 +558,103 @@ class FixFlowIntegrationTest {
         ok("PATCH","/api/users/"+techId,admin,Map.of("enabled",false),200);
         assertEquals(401,call("GET","/api/users/me",tech,null).statusCode());
     }
+    @Test void costReportScopesTotalsQueuesAndExport() throws Exception {
+        String owner=register("Cost owner"),other=register("Cost stranger");
+        long person=ok("GET","/api/users/me",owner,null,200).path("id").asLong();
+        var body=Map.of("title","=Cost report","description","Repair","category","OTHER","priority","LOW","location","Lab");
+        long id=ok("POST","/api/tickets",owner,body,201).path("id").asLong();
+        String base="/api/tickets/"+id;
+        ok("PATCH",base+"/assign",owner,Map.of("technicianId",person),200);
+        var ticket=ok("PATCH",base+"/status",owner,Map.of("status","IN_PROGRESS"),200);
+        ok("PUT",base+"/repair-draft",owner,Map.of("description","Draft","workHours","1","laborCost","900","parts",java.util.List.of(),"version",ticket.path("version").asLong()),200);
+        assertEquals(0,ok("GET","/api/costs",owner,null,200).path("summary").path("totalCost").decimalValue().signum());
+        ticket=ok("GET",base,owner,null,200);
+        ok("POST",base+"/repair-records",owner,Map.of("description","Done","workHours","1","laborCost","125","parts",java.util.List.of(),"version",ticket.path("version").asLong()),201);
+        var report=ok("GET","/api/costs?size=1",owner,null,200);
+        assertEquals(125,report.path("summary").path("totalCost").asInt());
+        assertEquals(id,report.path("items").get(0).path("ticketId").asLong());
+        assertEquals(0,ok("GET","/api/costs",other,null,200).path("total").asInt());
+        assertEquals(0,ok("GET","/api/costs?mode=MISSING",owner,null,200).path("total").asInt());
+        assertEquals(1,ok("GET","/api/costs?mode=UNLINKED",owner,null,200).path("total").asInt());
+        assertEquals(0,ok("GET","/api/costs?from=2000-01-01&to=2000-01-31",owner,null,200).path("total").asInt());
+        assertEquals(0,ok("GET","/api/costs?equipment=no-match",owner,null,200).path("total").asInt());
+        assertEquals(1,ok("GET","/api/costs?assigneeId="+person,owner,null,200).path("total").asInt());
+        var csv=call("GET","/api/costs/export",owner,null);
+        assertEquals(200,csv.statusCode());assertTrue(csv.body().contains("'=Cost report"));
+        assertFalse(call("GET","/api/costs/export",other,null).body().contains("Cost report"));
+        assertEquals(400,call("GET","/api/costs?from=2026-02-02&to=2026-01-01",owner,null).statusCode());
+        assertEquals(400,call("GET","/api/costs?page=-1",owner,null).statusCode());
+        assertEquals(401,call("GET","/api/costs",null,null).statusCode());
+    }
+    @Autowired org.springframework.jdbc.core.JdbcTemplate reportJdbc;
+    @Test void costReportDistinguishesZeroFromMissingAndUsesTaipeiDates() throws Exception {
+        String owner=register("Cost boundary"),other=register("Cost outsider");
+        long userId=ok("GET","/api/users/me",owner,null,200).path("id").asLong();
+        var ids=new java.util.ArrayList<Long>();
+        for(int i=0;i<3;i++){
+            long id=ok("POST","/api/tickets",owner,Map.of("title","Boundary "+i,"description","Repair","category","OTHER","priority","LOW","location","Lab"),201).path("id").asLong();ids.add(id);
+            String base="/api/tickets/"+id;
+            ok("PATCH",base+"/assign",owner,Map.of("technicianId",userId),200);
+            var t=ok("PATCH",base+"/status",owner,Map.of("status","IN_PROGRESS"),200);
+            Object repair=i==2?Map.of("description","Legacy record"):Map.of("description","Completed","workHours","1","laborCost",i==0?"100":"0","parts",java.util.List.of(),"version",t.path("version").asLong());
+            ok("POST",base+"/repair-records",owner,repair,201);
+            reportJdbc.update("update ff_entries set completed_at=? where ticket_id=? and kind='REPAIR'",java.sql.Timestamp.from(java.time.Instant.parse(i==0?"2030-01-31T16:00:00Z":"2030-02-01T16:00:00Z")),id);
+        }
+        var all=ok("GET","/api/costs?size=1",owner,null,200);
+        assertEquals(2,all.path("total").asInt());assertEquals(2,all.path("totalPages").asInt());assertEquals(1,all.path("items").size());assertEquals(100,all.path("summary").path("totalCost").asInt());
+        var missing=ok("GET","/api/costs?mode=MISSING",owner,null,200);
+        assertEquals(1,missing.path("total").asInt());assertEquals(ids.get(2).longValue(),missing.path("items").get(0).path("ticketId").asLong());
+        var day=ok("GET","/api/costs?from=2030-02-01&to=2030-02-01",owner,null,200);
+        assertEquals(1,day.path("total").asInt());assertEquals(100,day.path("summary").path("totalCost").asInt());
+        assertEquals(1,ok("GET","/api/costs/people",owner,null,200).size());assertEquals(0,ok("GET","/api/costs/people",other,null,200).size());
+        long assetId=ok("POST","/api/assets",owner,Map.of("code","R-"+UUID.randomUUID(),"name","Cost asset","location","Lab","category","OTHER","enabled",true),201).path("id").asLong();
+        String base="/api/tickets/"+ids.get(0);
+        var closed=ok("PATCH",base+"/status",owner,Map.of("status","CLOSED"),200);
+        ok("PATCH",base+"/asset",owner,Map.of("assetId",assetId,"version",closed.path("version").asLong()),200);
+        assertEquals(2,ok("GET","/api/costs?mode=UNLINKED",owner,null,200).path("total").asInt());
+        assertEquals(100,ok("GET","/api/costs?equipment=Cost%20asset",owner,null,200).path("summary").path("totalCost").asInt());
+        assertEquals(0,ok("GET","/api/costs?equipment=%25",owner,null,200).path("total").asInt());
+    }
+    @Test void closedRepairCostsCanBeCorrectedWithAuditAndRevision() throws Exception {
+        String owner=register("Cost editor"),other=register("Other editor");
+        long person=ok("GET","/api/users/me",owner,null,200).path("id").asLong();
+        long asset=ok("POST","/api/assets",owner,Map.of("code","E-"+UUID.randomUUID(),"name","Audit asset","location","Lab","category","OTHER","enabled",true),201).path("id").asLong();
+        long id=ok("POST","/api/tickets",owner,Map.of("title","Cost correction","description","Repair","category","OTHER","location","Lab","priority","LOW","assetId",asset),201).path("id").asLong();String base="/api/tickets/"+id;
+        ok("PATCH",base+"/assign",owner,Map.of("technicianId",person),200);
+        ok("PATCH",base+"/status",owner,Map.of("status","IN_PROGRESS"),200);
+        var done=ok("POST",base+"/repair-records",owner,Map.of("description","Original repair"),201);
+        long repairId=done.path("repairs").get(0).path("id").asLong();
+        var closed=ok("PATCH",base+"/status",owner,Map.of("status","CLOSED"),200);
+        closed=ok("GET",base,owner,null,200);
+        var input=new HashMap<String,Object>(Map.of("repairId",repairId,"reason","補登收據","workHours","1.25","laborCost","100","parts",List.of(Map.of("name","Connector","quantity",2,"unitPrice","25")),"version",closed.path("version").asLong()));
+        assertEquals(404,call("POST",base+"/cost-corrections",other,input).statusCode());
+        var updated=ok("POST",base+"/cost-corrections",owner,input,200);
+        assertEquals("CLOSED",updated.path("status").asText());assertEquals(closed.path("closedAt"),updated.path("closedAt"));assertEquals(closed.path("resolvedAt"),updated.path("resolvedAt"));
+        assertEquals(1,updated.path("repairs").size());assertEquals("Original repair",updated.path("repairs").get(0).path("content").asText());assertEquals(150,updated.path("repairCostSummary").path("recordedTotal").asInt());
+        assertEquals(1,updated.path("costChanges").size());assertTrue(updated.path("costChanges").get(0).path("content").asText().contains("未登錄"));assertTrue(updated.path("costChanges").get(0).path("content").asText().contains("150.00"));assertEquals("Cost editor",updated.path("costChanges").get(0).path("author").asText());
+        assertEquals(409,call("POST",base+"/cost-corrections",owner,input).statusCode());
+        assertEquals(150,ok("GET","/api/costs",owner,null,200).path("summary").path("totalCost").asInt());
+        assertEquals(150,ok("GET","/api/assets/"+asset+"/tickets",owner,null,200).path("maintenanceSummary").path("totalCost").asInt());
+        assertEquals(0,ok("GET","/api/costs?mode=MISSING",owner,null,200).path("total").asInt());
+        input.put("version",updated.path("version").asLong());input.put("reason"," ");assertEquals(400,call("POST",base+"/cost-corrections",owner,input).statusCode());
+        input.put("reason","保固免費");input.put("laborCost","-1");assertEquals(400,call("POST",base+"/cost-corrections",owner,input).statusCode());
+        input.put("laborCost","0");input.put("parts",List.of());updated=ok("POST",base+"/cost-corrections",owner,input,200);
+        assertEquals(0,updated.path("repairCostSummary").path("recordedTotal").asInt());assertEquals(2,updated.path("costChanges").size());
+        assertEquals(0,ok("GET","/api/assets/"+asset+"/tickets",owner,null,200).path("maintenanceSummary").path("totalCost").asInt());
+        assertEquals(0,ok("GET","/api/costs?mode=MISSING",owner,null,200).path("total").asInt());
+    }
+    @Test void costCorrectionRejectsActiveTicketsAndHandlesLegacyMissingRecords() throws Exception {
+        String owner=register("Legacy cost editor");
+        long id=ok("POST","/api/tickets",owner,Map.of("title","Legacy repair","description","Old data","category","OTHER","location","Lab","priority","LOW"),201).path("id").asLong();String base="/api/tickets/"+id;
+        var t=ok("GET",base,owner,null,200);
+        var input=new HashMap<String,Object>(Map.of("reason","補登舊資料","workHours","0","laborCost","0","parts",List.of(),"version",t.path("version").asLong()));
+        assertEquals(409,call("POST",base+"/cost-corrections",owner,input).statusCode());
+        reportJdbc.update("update ff_tickets set status='CLOSED',resolved_at=?,closed_at=? where id=?",java.sql.Timestamp.from(java.time.Instant.parse("2020-01-01T00:00:00Z")),java.sql.Timestamp.from(java.time.Instant.parse("2020-01-02T00:00:00Z")),id);
+        input.put("repairId",99999999L);assertEquals(404,call("POST",base+"/cost-corrections",owner,input).statusCode());input.remove("repairId");
+        var updated=ok("POST",base+"/cost-corrections",owner,input,200);assertEquals(1,updated.path("repairs").size());assertEquals("2020-01-01T00:00:00Z",updated.path("repairs").get(0).path("completedAt").asText());
+        assertEquals(0,updated.path("repairCostSummary").path("recordedTotal").asInt());assertEquals(1,updated.path("repairCostSummary").path("recordedRepairs").asInt());
+        input.put("version",updated.path("version").asLong());assertEquals(409,call("POST",base+"/cost-corrections",owner,input).statusCode());
+        input.put("repairId",updated.path("repairs").get(0).path("id").asLong());reportJdbc.update("update ff_tickets set status='CANCELLED' where id=?",id);assertEquals(409,call("POST",base+"/cost-corrections",owner,input).statusCode());
+    }
+
 }

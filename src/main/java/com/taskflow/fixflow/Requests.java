@@ -27,6 +27,11 @@ public final class Requests {
         @NotNull @DecimalMin("1") @DecimalMax("999") @Digits(integer=3,fraction=0) BigDecimal quantity,
         @NotNull @DecimalMin("0") @DecimalMax("999999.99") @Digits(integer=6,fraction=2) BigDecimal unitPrice) {}
     public record Rework(@NotBlank @Size(max=4000) String reason) {}
+    public record CostCorrection(@Positive Long repairId,@NotBlank @Size(max=1000) String reason,
+        @NotNull @DecimalMin("0") @DecimalMax("1000.00") @Digits(integer=4,fraction=2) BigDecimal workHours,
+        @NotNull @DecimalMin("0") @DecimalMax("9999999.99") @Digits(integer=7,fraction=2) BigDecimal laborCost,
+        @NotNull @Size(max=50) List<@NotNull @Valid RepairPartInput> parts,
+        @NotNull @PositiveOrZero Long version) {}
     public record UserUpdate(@NotNull Boolean enabled) {}
     public record Staff(@NotBlank @Size(max=80) String name,@NotBlank @Email @Size(max=254) String email,@NotBlank @Size(min=10,max=72) String password,@NotNull Role role) { @Override public String toString(){return "Staff[credentials redacted]";} }
 }

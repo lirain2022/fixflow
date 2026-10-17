@@ -87,3 +87,41 @@
  .system-shell .panel-footer{gap:12px;flex-wrap:wrap}
  .system-shell .pagination{margin-left:auto;gap:8px}
 }
+
+/* Ticket detail: summary, current action, optional records */
+.system-shell .ticket-detail-summary{padding:16px;background:#f5f8fe;border:1px solid #dce5f3;border-radius:12px;margin:16px 0}
+.system-shell .detail-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;margin:0 0 14px}
+.system-shell .detail-summary-grid dt{font-size:12px;color:#64748b;margin-bottom:4px}
+.system-shell .detail-summary-grid dd{margin:0;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.system-shell .ticket-detail-summary .repair-cost-grid{margin:0;border-top:1px solid #dce5f3;padding-top:14px}
+.system-shell .work-action-section{border:1px solid #bfd1f3;border-radius:12px;padding:18px;margin:16px 0;background:#fff}
+.system-shell .work-action-section>h4{font-size:16px;margin:0 0 16px;color:#173d78}
+.system-shell .detail-tools{margin-top:18px;padding-top:14px;border-top:1px solid #e5eaf2}
+.system-shell .detail-disclosure{margin:12px 0;border:1px solid #e1e7f0;border-radius:10px;background:#fff;overflow:hidden}
+.system-shell .detail-disclosure>summary{min-height:48px;padding:14px 16px;cursor:pointer;font-weight:600;font-size:14px;color:#334155}
+.system-shell .detail-disclosure>summary:focus-visible{outline:2px solid #2563eb;outline-offset:-3px}
+.system-shell .detail-disclosure[open]>summary{border-bottom:1px solid #e1e7f0;background:#f8fafc}
+.system-shell .disclosure-content{padding:16px}
+.system-shell .disclosure-content .detail-meta{margin-top:0}
+.system-shell .work-action-section .action-row:empty{display:none}
+@media(max-width:600px){.system-shell .detail-summary-grid{gap:12px}.system-shell .work-action-section{padding:14px}.system-shell .ticket-detail-summary{padding:14px}.system-shell .detail-tools .button{flex:1;min-width:0}}
+
+.cost-panel{padding-top:18px}.cost-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:end;padding:16px 24px}.cost-filters label{display:grid;gap:6px;font-size:13px;color:var(--text-secondary,#526176);flex:1;min-width:150px}.cost-filters input,.cost-filters select{width:100%;min-height:40px;border:1px solid #d8e0e8;border-radius:8px;padding:8px;background:#fff;color:#182b45}.cost-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 24px}.cost-summary>div{padding:18px;border:1px solid #dce5ed;border-radius:12px;background:#f7fafc}.cost-summary small{display:block;color:#526176;margin-bottom:8px}.cost-summary strong{font-size:24px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.cost-panel>.report-hint,.cost-panel>.report-error{padding:0 24px}.cost-panel .table-wrap{display:block;overflow-x:auto}.cost-panel .ticket-table{min-width:680px}.cost-panel .ticket-queues{flex-wrap:wrap}@media(max-width:600px){.cost-summary{grid-template-columns:1fr;margin:12px 16px;gap:8px}.cost-summary>div{padding:12px;display:flex;justify-content:space-between;align-items:center;gap:12px}.cost-summary small{margin:0}.cost-summary strong{font-size:20px}.cost-filters{padding:12px 16px}.cost-filters label{min-width:130px}.cost-panel .panel-heading{gap:12px;flex-wrap:wrap}}
+
+/* Cost rows keep amounts and actions together on narrow screens. */
+@media(max-width:700px){
+ .cost-panel .table-wrap{overflow:visible;padding:0 16px 16px}
+ .cost-panel .ticket-table{display:block;min-width:0;width:100%}
+ .cost-panel .ticket-table thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+ .cost-panel .ticket-table tbody{display:grid;gap:12px}
+ .cost-panel .ticket-table tr{display:block;min-width:0;border:1px solid #dce5ed;border-radius:12px;overflow:hidden;background:#fff}
+ .cost-panel .ticket-table td{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:10px 14px;border:0;white-space:normal;overflow-wrap:anywhere;text-align:right}
+ .cost-panel .ticket-table td[data-label]::before{content:attr(data-label);flex-shrink:0;color:#526176;font-size:12px;font-weight:400;text-align:left}
+ .cost-panel .ticket-table td:first-child{display:block;padding:14px;text-align:left;background:#f7fafc;border-bottom:1px solid #e5ebf1}
+ .cost-panel .ticket-table td:first-child .ticket-link{text-align:left;max-width:100%;white-space:normal}
+ .cost-panel .ticket-table td:last-child{display:block;padding:12px 14px 14px}
+ .cost-panel .ticket-table td:last-child .button{width:100%;min-height:44px}
+ .cost-panel .ticket-table td>div{min-width:0}
+}
+
+.system-shell .closure-check{border:1px solid #dce5ed;background:#f7fafc;border-radius:10px;padding:14px;margin:12px 0}.system-shell .closure-check h4{margin-top:0}.system-shell .cost-change p{white-space:pre-wrap;overflow-wrap:anywhere}

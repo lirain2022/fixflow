@@ -20,7 +20,7 @@ it('preserves unsaved costs after a comment and returns through the back action'
  const cost=await screen.findByLabelText('人工費（NT$）');fireEvent.change(cost,{target:{value:'80'}});
  fireEvent.change(screen.getByLabelText('新增留言'),{target:{value:'Update'}});fireEvent.click(screen.getByRole('button',{name:'送出留言'}));
  await waitFor(()=>expect(screen.getByRole('button',{name:'返回列表'})).toBeEnabled());expect(cost).toHaveValue(80);
- fireEvent.click(screen.getByRole('button',{name:'返回列表'}));expect(close).toHaveBeenCalledOnce();expect(screen.queryByRole('button',{name:'更新工單資料'})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'返回列表'}));expect(close).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'放棄修改'}));expect(close).toHaveBeenCalledOnce();expect(screen.queryByRole('button',{name:'更新工單資料'})).not.toBeInTheDocument();
 });
 
 it('lets an ordinary assigned account start its work',async()=>{

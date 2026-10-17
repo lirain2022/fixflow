@@ -14,7 +14,7 @@ test('one ordinary account manages equipment and completes a ticket assigned to 
  await page.getByRole('dialog').getByRole('button',{name:'開始維修',exact:true}).click();await expect(page.locator('.detail-badges')).toContainText('維修中');
  await page.getByRole('textbox',{name:'維修紀錄',exact:true}).fill('已處理完成');await page.getByLabel('實際工時（小時）').fill('1');await page.getByLabel('人工費（NT$）',{exact:true}).fill('100');
  await page.getByRole('button',{name:'儲存費用草稿'}).click();await expect(page.getByLabel('維修費用',{exact:true})).toContainText('NT$ 100.00');
- await page.getByRole('button',{name:'提交維修完成'}).click();await expect(page.locator('.detail-badges')).toContainText('待確認');await page.getByRole('button',{name:'確認結案',exact:true}).click();await expect(page.locator('.detail-badges')).toContainText('已結案');
+ await page.getByRole('button',{name:'提交維修完成'}).click();await expect(page.locator('.detail-badges')).toContainText('待驗收');await page.getByRole('button',{name:'確認結案',exact:true}).click();await expect(page.locator('.detail-badges')).toContainText('已結案');
  await expect(page.locator('.detail-meta')).toContainText('負責人');await expect(page.locator('.repair-entry')).toContainText('單一操作帳號');
  await page.getByRole('button',{name:'返回列表',exact:true}).click();await page.getByRole('button',{name:'派工中心',exact:true}).click();await page.getByRole('button',{name:'已結案／費用',exact:true}).click();
  await page.getByRole('button',{name:`查看費用 ${title}`,exact:true}).click();await expect(page.locator('.detail-meta')).toContainText('一般報修');await expect(page.getByLabel('維修費用',{exact:true})).toContainText('NT$ 100.00');await expect(page.locator('.repair-entry')).toContainText('NT$ 100.00');
@@ -62,7 +62,7 @@ test('two ordinary registered accounts dispatch and complete work in the same sy
     expect(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await login(handler,workerEmail);await handler.getByRole('button',{name:title,exact:true}).first().click();
     await expect(handler.getByLabel('指派人員')).toBeVisible();
-    await handler.getByRole('dialog').getByRole('button',{name:'開始維修',exact:true}).click();await handler.getByLabel('維修紀錄',{exact:true}).fill('一般帳號完成檢查與維修');await handler.getByLabel('實際工時（小時）',{exact:true}).fill('1');await handler.getByRole('button',{name:'提交維修完成'}).click();await expect(handler.locator('.detail-badges')).toContainText('待確認');
+    await handler.getByRole('dialog').getByRole('button',{name:'開始維修',exact:true}).click();await handler.getByLabel('維修紀錄',{exact:true}).fill('一般帳號完成檢查與維修');await handler.getByLabel('實際工時（小時）',{exact:true}).fill('1');await handler.getByRole('button',{name:'提交維修完成'}).click();await expect(handler.locator('.detail-badges')).toContainText('待驗收');
     await owner.getByRole('button',{name:'重新整理',exact:true}).click();await owner.getByRole('button',{name:title,exact:true}).first().click();await owner.getByRole('button',{name:'確認結案'}).click();await expect(owner.locator('.detail-badges')).toContainText('已結案');
     await expect(owner.getByRole('button',{name:'帳號管理',exact:true})).toHaveCount(0);
     const admin=await (await browser.newContext()).newPage();
