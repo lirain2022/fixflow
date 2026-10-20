@@ -3,7 +3,7 @@ import {test,expect} from '@playwright/test';
 test('manage equipment, report with location autofill and inspect scoped history',async({browser})=>{
   const contexts=await Promise.all([browser.newContext(),browser.newContext()]);const [admin,customer]=await Promise.all(contexts.map(c=>c.newPage()));
   const code=`AC-E2E-${Date.now()}`,name='三樓會議室冷氣',title=`設備報修 ${Date.now()}`;
-  const login=async(page,email)=>{await page.goto('/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await page.getByRole('button',{name:'登入',exact:true}).click();await expect(page.getByRole('heading',{name:'工作首頁'})).toBeVisible();};
+  const login=async(page,email)=>{await page.goto(email==='admin@fixflow.local'?'/system.html?portal=admin':'/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await page.getByRole('button',{name:'登入',exact:true}).click();await expect(page.getByRole('heading',{name:'工作首頁'})).toBeVisible();};
   try{
     await login(admin,'admin@fixflow.local');await admin.getByRole('button',{name:'設備管理',exact:true}).click();await admin.getByRole('button',{name:'新增設備',exact:true}).click();
     await admin.getByLabel('設備編號',{exact:true}).fill(code);await admin.getByLabel('設備名稱',{exact:true}).fill(name);await admin.getByLabel('設備位置',{exact:true}).fill('3F 會議室');await admin.getByLabel('設備分類',{exact:true}).selectOption('AIR_CONDITIONING');await admin.getByLabel('型號（選填）',{exact:true}).fill('AC-100');await admin.getByLabel('保固到期日（選填）',{exact:true}).fill('2028-12-31');await admin.getByRole('button',{name:'儲存設備',exact:true}).click();await expect(admin.getByRole('dialog')).toHaveCount(0);

@@ -4,7 +4,7 @@ test('one ordinary account manages equipment and completes a ticket assigned to 
  const stamp=Date.now(),password='UnifiedPass123!',email=`single-${stamp}@example.com`;
  const create=async(name,email)=>(await (await request.post('/api/auth/register',{data:{name,email,password}})).json());
  const owner=await create('單一操作帳號',email),worker=await create('負責人',`single-worker-${stamp}@example.com`);
- await page.goto('/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();
+ await page.goto(email==='admin@fixflow.local'?'/system.html?portal=admin':'/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();
  await page.getByRole('button',{name:'設備管理',exact:true}).click();await page.getByRole('button',{name:'新增設備',exact:true}).click();
  await page.getByLabel('設備編號',{exact:true}).fill(`UNI-${stamp}`);await page.getByLabel('設備名稱',{exact:true}).fill('單帳號設備');await page.getByLabel('設備位置',{exact:true}).fill('B1');await page.getByLabel('設備分類',{exact:true}).selectOption('OTHER');await page.getByRole('button',{name:'儲存設備',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);
  const title=`同帳號完成 ${stamp}`,headers={Authorization:`Bearer ${owner.token}`};
@@ -52,7 +52,7 @@ test('two ordinary registered accounts dispatch and complete work in the same sy
   const created=await request.post('/api/tickets',{headers:{Authorization:`Bearer ${registered[0].token}`},data:{title,description:'不需技師或管理員帳號',location:'2F',category:'OTHER',priority:'LOW'}});expect(created.status()).toBe(201);const ticket=await created.json();
   const contexts=await Promise.all([browser.newContext({viewport:{width:390,height:844}}),browser.newContext()]);
   const [owner,handler]=await Promise.all(contexts.map(c=>c.newPage()));
-  async function login(page,email){await page.goto('/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();await page.getByRole('button',{name:'工單中心',exact:true}).click();}
+  async function login(page,email){await page.goto(email==='admin@fixflow.local'?'/system.html?portal=admin':'/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();await page.getByRole('button',{name:'工單中心',exact:true}).click();}
   try{
     await login(owner,ownerEmail);
     await owner.getByRole('button',{name:`派工 ${ticket.ticketNo}`,exact:true}).filter({visible:true}).click();
@@ -67,7 +67,7 @@ test('two ordinary registered accounts dispatch and complete work in the same sy
     await expect(owner.getByRole('button',{name:'帳號管理',exact:true})).toHaveCount(0);
     const admin=await (await browser.newContext()).newPage();
     try{
-      await admin.goto('/system.html');await admin.getByLabel('Email',{exact:true}).fill('admin@fixflow.local');await admin.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await admin.getByRole('button',{name:'登入',exact:true}).click();await admin.getByRole('button',{name:'工單中心',exact:true}).click();
+      await admin.goto('/system.html?portal=admin');await admin.getByLabel('Email',{exact:true}).fill('admin@fixflow.local');await admin.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await admin.getByRole('button',{name:'登入',exact:true}).click();await admin.getByRole('button',{name:'工單中心',exact:true}).click();
       await admin.getByRole('combobox',{name:'處理人員',exact:true}).selectOption(String(worker.id));await expect(admin.getByRole('button',{name:title,exact:true}).first()).toBeVisible();
     }finally{await admin.context().close();}
   }finally{await Promise.all(contexts.map(c=>c.close()));}
@@ -76,7 +76,7 @@ test('home leads to dispatch with real workload counts and mobile layout',async(
   const login=await request.post('/api/auth/login',{data:{email:'customer@fixflow.local',password:'FixFlow123!'}});expect(login.ok()).toBeTruthy();
   const {token}=await login.json();const title=`統一派工 ${Date.now()}`;
   const created=await request.post('/api/tickets',{headers:{Authorization:`Bearer ${token}`},data:{title,description:'驗證派工中心整合',location:'展示空間',category:'OTHER',priority:'HIGH'}});expect(created.status()).toBe(201);
-  await page.goto('/system.html');await page.getByLabel('Email',{exact:true}).fill('admin@fixflow.local');await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await page.getByRole('button',{name:'登入',exact:true}).click();
+  await page.goto('/system.html?portal=admin');await page.getByLabel('Email',{exact:true}).fill('admin@fixflow.local');await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await page.getByRole('button',{name:'登入',exact:true}).click();
   await expect(page.getByRole('heading',{name:'工作首頁'})).toBeVisible();await expect(page.getByRole('button',{name:/待派工 \d+/})).toBeVisible();
   await page.getByRole('button',{name:'前往派工中心'}).click();await expect(page.getByRole('heading',{name:'派工中心'})).toBeVisible();
   await page.getByRole('textbox',{name:'搜尋派工工單'}).fill(title);await page.getByRole('button',{name:'搜尋',exact:true}).click();

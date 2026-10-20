@@ -12,7 +12,7 @@ test('filtered CSV download matches the list and works on mobile',async({page,re
   };
   const high=await make('HIGH'),low=await make('LOW');
   expect((await request.patch(`/api/tickets/${high.id}/assign`,{headers,data:{technicianId:technician.id}})).ok()).toBeTruthy();
-  await page.goto('/system.html');await page.getByLabel('Email',{exact:true}).fill('admin@fixflow.local');await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await page.getByRole('button',{name:'登入',exact:true}).click();
+  await page.goto('/system.html?portal=admin');await page.getByLabel('Email',{exact:true}).fill('admin@fixflow.local');await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await page.getByRole('button',{name:'登入',exact:true}).click();
   await page.getByRole('button',{name:'工單中心',exact:true}).click();
   await page.getByRole('textbox',{name:'搜尋工單'}).fill(marker);
   await expect(page.getByRole('button',{name:'匯出 CSV'})).toBeDisabled();

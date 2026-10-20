@@ -5,9 +5,9 @@ import AssetPicker from './AssetPicker';
 import {ticketEditReason} from './ticketEditing';
 import useTicketDraft from './useTicketDraft';
 
-export default function TicketForm({ticket,initialAsset,user,api,onDone,onClose}){
+export default function TicketForm({ticket,initialAsset,initialValues,user,api,onDone,onClose}){
   const [source,setSource]=useState(ticket);
-  const drafts=useTicketDraft(ticket,user,initialAsset);const {draft,setDraft,dirty,pending,notice,savedAt}=drafts;
+  const drafts=useTicketDraft(ticket,user,initialAsset,initialValues);const {draft,setDraft,dirty,pending,notice,savedAt}=drafts;
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[conflict,setConflict]=useState(false);
   const reason=source&&user?ticketEditReason(source,user):'';
   function close(){if(!busy&&(!dirty||window.confirm('尚有未儲存的變更。關閉前請確認草稿暫存狀態；確定要離開嗎？')))onClose();}

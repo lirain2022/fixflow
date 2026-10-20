@@ -7,7 +7,7 @@ test('cost overview links tickets, exports visible costs and fits mobile',async(
  expect((await request.patch(base+'/assign',{headers,data:{technicianId:session.user.id}})).status()).toBe(200);
  const started=await (await request.patch(base+'/status',{headers,data:{status:'IN_PROGRESS'}})).json();
  expect((await request.post(base+'/repair-records',{headers,data:{description:'更換接頭完成',workHours:'1',laborCost:'125',parts:[],version:started.version}})).status()).toBe(201);
- await page.goto('/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();
+ await page.goto(email==='admin@fixflow.local'?'/system.html?portal=admin':'/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();
  await page.getByRole('button',{name:'費用總覽',exact:true}).click();await expect(page.getByLabel('費用摘要')).toContainText('125');
  await page.getByRole('button',{name:'查看工單',exact:true}).click();await expect(page.getByRole('dialog',{name:'工單詳細資訊'})).toContainText('費用總覽測試');await page.getByRole('button',{name:'返回列表',exact:true}).click();
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'匯出 CSV',exact:true}).click();expect((await download).suggestedFilename()).toBe('fixflow-costs.csv');

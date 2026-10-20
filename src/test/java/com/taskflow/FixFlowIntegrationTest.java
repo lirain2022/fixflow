@@ -15,6 +15,17 @@ import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test")
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT, properties={"spring.jpa.hibernate.ddl-auto=validate","fixflow.upload-dir=./target/test-uploads","fixflow.redis-enabled=false"})
 class FixFlowIntegrationTest {
+    @Test void separateLoginPortalsCheckRoles()throws Exception{
+        var admin=Map.of("email","admin@fixflow.local","password","FixFlow123!");
+        var member=Map.of("email","customer@fixflow.local","password","FixFlow123!");
+        assertEquals("ADMIN",ok("POST","/api/auth/admin-login",null,admin,200).path("user").path("role").asText());
+        assertEquals("CUSTOMER",ok("POST","/api/auth/member-login",null,member,200).path("user").path("role").asText());
+        var forbidden=call("POST","/api/auth/admin-login",null,member);
+        assertEquals(403,forbidden.statusCode());assertFalse(forbidden.body().contains("\"token\""));
+        assertEquals(403,call("POST","/api/auth/member-login",null,admin).statusCode());
+        assertEquals(401,call("POST","/api/auth/admin-login",null,Map.of("email","admin@fixflow.local","password","incorrect")).statusCode());
+        assertEquals(400,call("POST","/api/auth/admin-login",null,Map.of()).statusCode());
+    }
     @Test void previousStepPreservesCostsAndChecksRevisionAndVisibility()throws Exception{
         String owner=register("Back owner"),worker=register("Back worker"),other=register("Back outsider");
         long workerId=ok("GET","/api/users/me",worker,null,200).path("id").asLong();

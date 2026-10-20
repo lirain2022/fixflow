@@ -18,11 +18,11 @@ function load(key){
   }catch{return {raw:null,record:null,error:STORAGE_ERROR};}
 }
 
-export default function useTicketDraft(ticket,user,initialAsset){
+export default function useTicketDraft(ticket,user,initialAsset,initialValues){
   const key=user?.id?`${PREFIX}${user.id}:${ticket?.id??'new'}`:null;
   const [initial]=useState(()=>load(key));
-  const seed=ticket|| (initialAsset?{asset:initialAsset,location:initialAsset.location,category:initialAsset.category}:null);
-  const [draft,setDraft]=useState(()=>fields(seed)),[baseline,setBaseline]=useState(()=>fields(seed));
+  const seed=ticket|| (initialAsset?{asset:initialAsset,location:initialAsset.location,category:initialAsset.category}:initialValues);
+  const [draft,setDraft]=useState(()=>fields(seed)),[baseline,setBaseline]=useState(()=>fields(!ticket&&initialValues?null:seed));
   const [version,setVersion]=useState(ticket?.version??null),[pending,setPending]=useState(initial.record);
   const [notice,setNotice]=useState(initial.error),[savedAt,setSavedAt]=useState(null);
   const raw=useRef(initial.raw),paused=useRef(false);

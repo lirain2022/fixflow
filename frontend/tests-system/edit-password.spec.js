@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 
 async function login(page,email,password='FixFlow123!'){
-  await page.goto('/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();await expect(page.getByRole('heading',{name:'工作首頁'})).toBeVisible();
+  await page.goto(email==='admin@fixflow.local'?'/system.html?portal=admin':'/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();await expect(page.getByRole('heading',{name:'工作首頁'})).toBeVisible();
 }
 test('row editing preserves conflicting text and reloads the current version',async({browser,request})=>{
   const auth=await request.post('/api/auth/login',{data:{email:'customer@fixflow.local',password:'FixFlow123!'}});const {token}=await auth.json();const title=`編輯驗證 ${Date.now()}`;
@@ -26,8 +26,8 @@ test('password change logs out old sessions and allows only the new password',as
   try{
     await login(page,email,oldPassword);await login(other,email,oldPassword);await page.setViewportSize({width:390,height:844});
     await page.getByRole('button',{name:'修改密碼',exact:true}).click();await page.getByLabel('目前密碼',{exact:true}).fill('Incorrect123!');await page.getByLabel('新密碼',{exact:true}).fill(newPassword);await page.getByLabel('再次輸入新密碼',{exact:true}).fill(newPassword);await page.getByRole('button',{name:'確認修改密碼'}).click();await expect(page.getByRole('alert')).toContainText('目前密碼不正確');await expect(page.getByRole('dialog')).toBeVisible();
-    await page.getByLabel('目前密碼',{exact:true}).fill(oldPassword);await page.getByRole('button',{name:'確認修改密碼'}).click();await expect(page.getByRole('heading',{name:'登入工作空間'})).toBeVisible();await expect(page.getByRole('status')).toContainText('密碼已更新');
-    await other.getByRole('button',{name:'重新整理',exact:true}).click();await expect(other.getByRole('heading',{name:'登入工作空間'})).toBeVisible();
+    await page.getByLabel('目前密碼',{exact:true}).fill(oldPassword);await page.getByRole('button',{name:'確認修改密碼'}).click();await expect(page.getByRole('heading',{name:'會員登入'})).toBeVisible();await expect(page.getByRole('status')).toContainText('密碼已更新');
+    await other.getByRole('button',{name:'重新整理',exact:true}).click();await expect(other.getByRole('heading',{name:'會員登入'})).toBeVisible();
     expect((await request.get('/api/users/me',{headers:{Authorization:`Bearer ${token}`}})).status()).toBe(401);
     await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(oldPassword);await page.getByRole('button',{name:'登入',exact:true}).click();await expect(page.getByRole('alert')).toContainText('不正確');
     await page.getByLabel('密碼',{exact:true}).fill(newPassword);await page.getByRole('button',{name:'登入',exact:true}).click();await expect(page.getByRole('heading',{name:'工作首頁'})).toBeVisible();

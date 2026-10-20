@@ -11,6 +11,6 @@ export async function request(path,method='GET',body=null,token=null,{signal,blo
   }
   return blob?response.blob():response.status===204?null:response.json();
 }
-const SESSION_KEY='fixflow.session.v1';
-export function readSession(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY))?.token||null;}catch{return null;}}
-export function saveSession(token){try{token?sessionStorage.setItem(SESSION_KEY,JSON.stringify({token})):sessionStorage.removeItem(SESSION_KEY);}catch{/* Continue in memory if browser storage is unavailable. */}}
+function sessionKey(){return new URLSearchParams(window.location.search).get('portal')==='admin'?'fixflow.admin-session.v1':'fixflow.session.v1';}
+export function readSession(){try{return JSON.parse(sessionStorage.getItem(sessionKey()))?.token||null;}catch{return null;}}
+export function saveSession(token){try{token?sessionStorage.setItem(sessionKey(),JSON.stringify({token})):sessionStorage.removeItem(sessionKey());}catch{/* Continue in memory if browser storage is unavailable. */}}

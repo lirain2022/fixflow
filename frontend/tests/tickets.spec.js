@@ -12,7 +12,7 @@ async function fill(page, title = '飲水機測試專用報修') {
 test('desktop list, combined search, persistence and safe text rendering', async ({ page }) => {
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto('/');
+  await page.goto('/demo.html');
   await expect(page.getByRole('heading', { name: '工單管理', exact: true })).toBeVisible();
   await expect(page.getByRole('row')).toHaveCount(7);
   await page.screenshot({ path: 'test-results/desktop.png', fullPage: true });
@@ -36,7 +36,7 @@ test('desktop list, combined search, persistence and safe text rendering', async
 });
 test('mobile dialog traps focus, handles Escape, validates and cancels', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/demo.html');
   await page.screenshot({ path: 'test-results/mobile.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.getByRole('table')).not.toBeVisible();
@@ -59,7 +59,7 @@ test('mobile dialog traps focus, handles Escape, validates and cancels', async (
   expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).length, KEY)).toBe(6);
 });
 test('storage failure preserves input without a success message', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/demo.html');
   await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException('Quota exceeded', 'QuotaExceededError'); }; });
   const dialog = await fill(page);
   await dialog.getByRole('button', { name: '建立工單' }).click();
@@ -70,7 +70,7 @@ test('storage failure preserves input without a success message', async ({ page 
 });
 test('damaged storage is preserved until the user resets', async ({ page }) => {
   await page.addInitScript(key => localStorage.setItem(key, '{broken'), KEY);
-  await page.goto('/');
+  await page.goto('/demo.html');
   await expect(page.getByRole('alert')).toContainText('資料格式損毀');
   expect(await page.evaluate(key => localStorage.getItem(key), KEY)).toBe('{broken');
   await page.getByRole('button', { name: '重設展示資料' }).click();

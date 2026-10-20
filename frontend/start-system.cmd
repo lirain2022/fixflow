@@ -9,7 +9,8 @@ if not exist "node_modules\vite\bin\vite.js" (
  pause
  exit /b 1
 )
-echo FixFlow full system: http://127.0.0.1:5175/system.html
+echo RE:FIX home: http://127.0.0.1:5175/
+echo FixFlow workspace: http://127.0.0.1:5175/system.html
 echo Start the backend with start-backend.cmd from the project root.
 "%FIXFLOW_NODE%" node_modules\vite\bin\vite.js --config vite.system.config.js
 if errorlevel 1 pause

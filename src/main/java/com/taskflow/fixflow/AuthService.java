@@ -24,9 +24,22 @@ public class AuthService {
     }
     public Map<String,Object> register(Requests.Register input){return session(create(input.name(),input.email(),input.password(),Role.CUSTOMER));}
     public Map<String,Object> login(Requests.Login input){
+        return session(authenticate(input));
+    }
+    public Map<String,Object> adminLogin(Requests.Login input){
+        User user=authenticate(input);
+        if(user.role!=Role.ADMIN)throw new ApiException(403,"此帳號不是管理員，請使用會員登入");
+        return session(user);
+    }
+    public Map<String,Object> memberLogin(Requests.Login input){
+        User user=authenticate(input);
+        if(user.role==Role.ADMIN)throw new ApiException(403,"這是管理員帳號，請使用管理員登入");
+        return session(user);
+    }
+    private User authenticate(Requests.Login input){
         if(input.password().getBytes(StandardCharsets.UTF_8).length>72)throw new ApiException(401,"Email 或密碼不正確");
         User user=users.findByEmail(input.email().strip().toLowerCase(Locale.ROOT)).orElse(null);
-        if(user==null||!user.enabled||!passwords.matches(input.password(),user.passwordHash))throw new ApiException(401,"Email 或密碼不正確");return session(user);
+        if(user==null||!user.enabled||!passwords.matches(input.password(),user.passwordHash))throw new ApiException(401,"Email 或密碼不正確");return user;
     }
     public void changePassword(Authentication authentication,Requests.PasswordChange input){
         if(!(authentication instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken jwt))throw new ApiException(401,"請重新登入");
