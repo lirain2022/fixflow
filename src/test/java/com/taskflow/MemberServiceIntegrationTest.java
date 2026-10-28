@@ -3,6 +3,30 @@ import java.net.URI;import java.net.http.*;import java.util.*;
 import org.junit.jupiter.api.Test;import org.springframework.beans.factory.annotation.Autowired;import org.springframework.boot.test.context.SpringBootTest;import org.springframework.test.context.ActiveProfiles;import org.springframework.core.env.Environment;import tools.jackson.databind.*;import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test") @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties={"spring.datasource.url=jdbc:h2:mem:member-tests;DB_CLOSE_DELAY=-1","spring.jpa.hibernate.ddl-auto=validate","fixflow.redis-enabled=false","fixflow.upload-dir=./target/member-test-uploads"})
 class MemberServiceIntegrationTest {
+ @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+ @Test void activeTicketFilterUsesOwnedRowsBeforePagination()throws Exception{
+  String owner=register(),other=register();
+  var expected=new ArrayList<Long>();
+  for(String state:List.of("OPEN","ASSIGNED","IN_PROGRESS","RESOLVED","CLOSED","CANCELLED")){
+   long id=create(owner);jdbc.update("update ff_tickets set status=? where id=?",state,id);
+   if(List.of("OPEN","ASSIGNED","IN_PROGRESS").contains(state))expected.add(id);
+  }
+  long foreign=create(other);long ownerId=ok("GET","/api/users/me",owner,null,200).path("id").asLong();
+  jdbc.update("update ff_tickets set assigned_to_id=? where id=?",ownerId,foreign);
+  Collections.reverse(expected);
+  var first=ok("GET","/api/member/tickets?active=true&size=2",owner,null,200);
+  assertEquals(3,first.path("total").asInt());assertEquals(2,first.path("totalPages").asInt());
+  assertEquals(expected.get(0).longValue(),first.path("items").get(0).path("id").asLong());
+  assertEquals(expected.get(1).longValue(),first.path("items").get(1).path("id").asLong());
+  var last=ok("GET","/api/member/tickets?active=true&size=2&page=1",owner,null,200);
+  assertEquals(1,last.path("items").size());assertEquals(expected.get(2).longValue(),last.path("items").get(0).path("id").asLong());
+  assertEquals(3,ok("GET","/api/member/summary",owner,null,200).path("active").asInt());
+  assertEquals(6,ok("GET","/api/member/tickets",owner,null,200).path("total").asInt());
+  assertEquals(0,ok("GET","/api/member/tickets?active=true&status=CLOSED",owner,null,200).path("total").asInt());
+  assertEquals(0,ok("GET","/api/member/tickets?active=true&query=missing",owner,null,200).path("total").asInt());
+  assertEquals(400,call("GET","/api/member/tickets?active=true&page=-1",owner,null).statusCode());
+  assertEquals(400,call("GET","/api/member/tickets?active=true&size=101",owner,null).statusCode());
+ }
  @Autowired Environment env;final ObjectMapper json=new ObjectMapper();final HttpClient client=HttpClient.newHttpClient();
  HttpResponse<String> call(String method,String path,String token,Object body)throws Exception{var b=HttpRequest.newBuilder(URI.create("http://localhost:"+env.getProperty("local.server.port")+path)).header("Content-Type","application/json");if(token!=null)b.header("Authorization","Bearer "+token);return client.send(b.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build(),HttpResponse.BodyHandlers.ofString());}
  JsonNode ok(String method,String path,String token,Object body,int code)throws Exception{var r=call(method,path,token,body);assertEquals(code,r.statusCode(),r.body());return r.body().isBlank()?json.createObjectNode():json.readTree(r.body());}
