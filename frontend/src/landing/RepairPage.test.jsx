@@ -11,7 +11,7 @@ it('stores every report field before going to authenticated confirmation',async(
  fireEvent.change(screen.getByLabelText('報修位置'),{target:{value:'二樓辦公室'}});
  fireEvent.change(screen.getByLabelText('優先級'),{target:{value:'HIGH'}});
  fireEvent.click(screen.getByRole('button',{name:'下一步：確認報修'}));
- await waitFor(()=>expect(go).toHaveBeenCalledWith('/system.html?action=new'));
+ await waitFor(()=>expect(go).toHaveBeenCalledWith('/member.html?next=report'));
  expect(readHandoff()).toEqual({title:'Wi-Fi 故障',description:'上午開始無法連線',location:'二樓辦公室',category:'NETWORK',priority:'HIGH'});
 });
 it('restores a saved report without overwriting it with a different service link',()=>{

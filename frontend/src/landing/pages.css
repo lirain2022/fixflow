@@ -26,3 +26,5 @@
 @media(max-width:900px){.home-progress{flex-wrap:wrap;padding:26px}.home-progress>.primary{margin-left:86px}.fee-grid{gap:12px}.fee-grid article{padding:22px}.home-faq{grid-template-columns:1fr;gap:32px}.fee-footnote{align-items:flex-start;flex-direction:column;gap:8px}}
 @media(max-width:560px){.home-progress{margin:36px 20px 0;padding:24px;gap:18px}.home-progress>div:nth-child(2){flex-basis:100%}.progress-symbol{width:48px;height:48px}.home-progress h2{font-size:23px;line-height:1.5}.home-progress>.primary{margin-left:0;width:100%;justify-content:center}.fee-grid{grid-template-columns:1fr;gap:14px}.fee-grid article{padding:24px}.fee-grid h3{margin-top:16px}.faq-intro h2{font-size:30px}.faq-list summary{font-size:15px;padding-block:22px}.home-faq{gap:25px}}
 @media(prefers-reduced-motion:reduce){.faq-list summary svg{transition:none}}
+
+.member-nav-user{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:#b9e4f8}@media(max-width:560px){.member-nav-user{display:none}}

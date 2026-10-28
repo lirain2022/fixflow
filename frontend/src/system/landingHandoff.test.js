@@ -3,7 +3,7 @@ import {saveHandoff,readHandoff,clearHandoff} from './landingHandoff';
 beforeEach(()=>{sessionStorage.clear();vi.restoreAllMocks();});
 it('preserves the full public report through login and excludes extra properties',()=>{
  const fields={title:'網路故障',description:'Wi-Fi 斷線',location:'2F',category:'NETWORK',priority:'HIGH'};
- expect(saveHandoff({...fields,id:999,role:'ADMIN'})).toBe('/system.html?action=new');
+ expect(saveHandoff({...fields,id:999,role:'ADMIN'})).toBe('/member.html?next=report');
  expect(readHandoff()).toEqual(fields);
 });
 it('rejects oversized public form fields and invalid priorities',()=>{
@@ -12,7 +12,7 @@ it('rejects oversized public form fields and invalid priorities',()=>{
 });
 it('keeps report text across navigation without placing it in a URL',()=>{
  const url=saveHandoff(' Wi-Fi 一直斷線 ','NETWORK');
- expect(url).toBe('/system.html?action=new');
+ expect(url).toBe('/member.html?next=report');
  expect(readHandoff()).toEqual({description:'Wi-Fi 一直斷線',category:'NETWORK'});
  expect(readHandoff()).not.toBeNull();
  clearHandoff();expect(readHandoff()).toBeNull();

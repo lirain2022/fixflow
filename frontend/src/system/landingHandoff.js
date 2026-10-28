@@ -12,7 +12,7 @@ export function saveHandoff(description='',category='OTHER'){
   const data=fields(typeof description==='string'?{description:description.trim(),category}:description);
   try{sessionStorage.setItem(KEY,JSON.stringify({...data,savedAt:Date.now()}));}
   catch{throw new Error('瀏覽器無法暫存資料，請先複製內容，再使用會員登入建立工單。');}
-  return '/system.html?action=new';
+  return '/member.html?next=report';
 }
 export function readHandoff(){
   try{

@@ -1,7 +1,8 @@
+import {registerStaff} from './staff-fixture';
 import {test,expect} from '@playwright/test';
 
 test('actions stay in their panels and form footers remain reachable on desktop and mobile',async({page})=>{
- await page.goto('/system.html');await page.getByLabel('Email',{exact:true}).fill('customer@fixflow.local');await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await page.getByRole('button',{name:'登入',exact:true}).click();
+ await page.goto('/system.html?portal=admin');await page.getByLabel('Email',{exact:true}).fill('admin@fixflow.local');await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await page.getByRole('button',{name:'登入',exact:true}).click();
  for(const width of [1440,390]){
   await page.setViewportSize({width,height:844});
   await page.getByRole('button',{name:'設備管理',exact:true}).click();await expect(page.getByLabel('搜尋設備資料')).toBeVisible();await expect(page.getByLabel('搜尋未連結工單')).not.toBeVisible();
@@ -18,10 +19,10 @@ test('actions stay in their panels and form footers remain reachable on desktop 
 
 
 test('protects unsaved costs across close, Escape and previous step on mobile',async({page,request})=>{
- const email=`guard-${Date.now()}@example.com`,password='FixFlow123!';const registration=await request.post('/api/auth/register',{data:{name:'費用保護測試',email,password}});expect(registration.status()).toBe(201);const auth=await registration.json(),headers={Authorization:`Bearer ${auth.token}`};
+ const email=`guard-${Date.now()}@example.com`,password='FixFlow123!';const registration=await registerStaff(request,{data:{name:'費用保護測試',email,password}});expect(registration.status()).toBe(201);const auth=await registration.json(),headers={Authorization:`Bearer ${auth.token}`};
  const created=await request.post('/api/tickets',{headers,data:{title:'費用防遺失測試',description:'測試',location:'測試室',category:'OTHER',priority:'LOW'}});expect(created.status()).toBe(201);const ticket=await created.json();
  expect((await request.patch(`/api/tickets/${ticket.id}/assign`,{headers,data:{technicianId:auth.user.id}})).ok()).toBeTruthy();expect((await request.patch(`/api/tickets/${ticket.id}/status`,{headers,data:{status:'IN_PROGRESS'}})).ok()).toBeTruthy();
- await page.goto(email==='admin@fixflow.local'?'/system.html?portal=admin':'/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();await page.getByRole('button',{name:'工單中心',exact:true}).click();await page.getByRole('button',{name:ticket.title,exact:true}).first().click();
+ await page.goto('/system.html?portal=admin');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();await page.getByRole('button',{name:'工單中心',exact:true}).click();await page.getByRole('button',{name:ticket.title,exact:true}).first().click();
  await expect(page.getByRole('region',{name:'工單摘要'})).toBeVisible();await expect(page.getByLabel('新增留言',{exact:true})).not.toBeVisible();await expect(page.getByLabel('新增照片',{exact:true})).not.toBeVisible();
  await page.setViewportSize({width:1440,height:900});await page.screenshot({path:'test-results/detail-organized-desktop.png'});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'test-results/detail-organized-mobile.png'});expect(await page.getByRole('dialog',{name:'工單詳細資訊'}).evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await page.locator('summary').filter({hasText:'留言討論'}).click();await page.getByLabel('新增留言',{exact:true}).fill('確認收合後仍可留言');await page.getByRole('button',{name:'送出留言',exact:true}).click();await expect(page.locator('.timeline-entry').filter({hasText:'確認收合後仍可留言'})).toBeVisible();await page.locator('summary').filter({hasText:'留言討論'}).click();

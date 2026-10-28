@@ -1,17 +1,18 @@
+import {registerStaff} from './staff-fixture';
 import {test,expect} from '@playwright/test';
 
 test('technician submits costs and owner sees preserved costs after a free rework round',async({browser,request})=>{
   const stamp=Date.now(),email=`cost-owner-${stamp}@example.com`,password='FixFlow123!';
   const auth=async email=>(await (await request.post('/api/auth/login',{data:{email,password}})).json());
-  const admin=await auth('admin@fixflow.local'),technician=await auth('tech@fixflow.local');
+  const admin=await auth('admin@fixflow.local'),technician=await auth('admin@fixflow.local');
   const assetResponse=await request.post('/api/assets',{headers:{Authorization:`Bearer ${admin.token}`},data:{code:`COST-${stamp}`,name:'費用履歷設備',location:'3F',category:'OTHER',enabled:true}});expect(assetResponse.status()).toBe(201);const asset=await assetResponse.json();
-  const registered=await request.post('/api/auth/register',{data:{name:'費用報修者',email,password}});expect(registered.status()).toBe(201);const ownerAuth=await registered.json();
+  const registered=await registerStaff(request,{data:{name:'費用報修者',email,password}});expect(registered.status()).toBe(201);const ownerAuth=await registered.json();
   const title=`維修費用 ${stamp}`;const created=await request.post('/api/tickets',{headers:{Authorization:`Bearer ${ownerAuth.token}`},data:{title,description:'Repair cost verification',location:'3F',category:'OTHER',priority:'LOW',assetId:asset.id}});expect(created.status()).toBe(201);const ticket=await created.json();
   expect((await request.patch(`/api/tickets/${ticket.id}/assign`,{headers:{Authorization:`Bearer ${admin.token}`},data:{technicianId:technician.user.id}})).status()).toBe(200);
   const contexts=await Promise.all([browser.newContext(),browser.newContext()]);const [tech,owner]=await Promise.all(contexts.map(c=>c.newPage()));
-  const open=async(page,email)=>{await page.goto(email==='admin@fixflow.local'?'/system.html?portal=admin':'/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();await page.getByRole('button',{name:'工單中心',exact:true}).click();await page.getByRole('button',{name:title,exact:true}).first().click();};
+  const open=async(page,email)=>{await page.goto('/system.html?portal=admin');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill(password);await page.getByRole('button',{name:'登入',exact:true}).click();await page.getByRole('button',{name:'工單中心',exact:true}).click();await page.getByRole('button',{name:title,exact:true}).first().click();};
   try{
-    await open(tech,'tech@fixflow.local');await tech.getByRole('button',{name:'開始維修',exact:true}).click();await tech.getByRole('textbox',{name:'維修紀錄',exact:true}).fill('更換接頭與密封圈');await tech.getByLabel('實際工時（小時）').fill('1.50');await tech.getByLabel('人工費（NT$）',{exact:true}).fill('500.25');
+    await open(tech,'admin@fixflow.local');await tech.getByRole('button',{name:'開始維修',exact:true}).click();await tech.getByRole('textbox',{name:'維修紀錄',exact:true}).fill('更換接頭與密封圈');await tech.getByLabel('實際工時（小時）').fill('1.50');await tech.getByLabel('人工費（NT$）',{exact:true}).fill('500.25');
     await tech.getByRole('button',{name:'新增零件'}).click();await tech.getByLabel('零件 1 名稱').fill('接頭');await tech.getByLabel('零件 1 數量').fill('2');await tech.getByLabel('零件 1 單價（NT$）').fill('12.30');
     await tech.getByRole('button',{name:'新增零件'}).click();await tech.getByLabel('零件 2 名稱').fill('密封圈');await tech.getByLabel('零件 2 數量').fill('3');await tech.getByLabel('零件 2 單價（NT$）').fill('0.10');await expect(tech.getByLabel('預估總費用')).toHaveText('NT$ 525.15');
     await tech.setViewportSize({width:390,height:844});await tech.getByLabel('預估總費用').scrollIntoViewIfNeeded();expect(await tech.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await tech.screenshot({path:'test-results/repair-cost-form-mobile.png',fullPage:true});

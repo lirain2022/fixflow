@@ -1,7 +1,11 @@
+import {clearHandoff} from '../system/landingHandoff';
 import {useEffect,useRef,useState} from 'react';
 import {ArrowUpRight,ChevronDown,Menu,X} from 'lucide-react';
+import {request} from '../system/api';import {readSession,saveSession} from '../member/memberSession';
 import {services,ServiceGlyph} from './services';
 export default function Navigation(){
+ const [member,setMember]=useState(null);
+ useEffect(()=>{let live=true;async function check(){const token=readSession();if(!token){if(live)setMember(null);return;}try{const u=await request('/users/me','GET',null,token);if(live)setMember(u.role==='ADMIN'?null:u);}catch{if(live)setMember(null);}}check();window.addEventListener('member-session',check);return()=>{live=false;window.removeEventListener('member-session',check);};},[]);
  const [open,setOpen]=useState(false),[mobile,setMobile]=useState(false);
  const root=useRef(null),trigger=useRef(null),mobileTrigger=useRef(null);
  useEffect(()=>{
@@ -20,7 +24,7 @@ export default function Navigation(){
     <a href="/process.html" aria-current={current==='/process.html'?'page':undefined}>維修流程</a>
     <a href="/repair.html" aria-current={current==='/repair.html'?'page':undefined}>線上報修</a>
    </div>
-   <div className="login-actions"><a className="admin-entry" href="/system.html?portal=admin">管理員登入</a><a className="navcta" href="/system.html">會員登入 <ArrowUpRight size={15}/></a></div>
+   <div className="login-actions">{member?<><span className="member-nav-user" title={member.name}>{member.name}</span><a className="navcta" href="/member.html">會員中心 <ArrowUpRight size={15}/></a><button className="admin-entry" onClick={()=>{saveSession(null);clearHandoff();window.dispatchEvent(new Event('member-session'));location.assign('/');}}>登出</button></>:<><a className="admin-entry" href="/system.html?portal=admin">管理員登入</a><a className="navcta" href="/member.html?screen=login">會員登入 <ArrowUpRight size={15}/></a></>}</div>
   </nav>
   <div id="service-dropdown" className="service-dropdown" hidden={!open}>
    <div className="dropdown-heading"><span>你想修好什麼？</span><small>選擇設備，開始報修</small></div>

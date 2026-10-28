@@ -1,0 +1,1 @@
+import {defineConfig} from '@playwright/test';export default defineConfig({testDir:'./tests-system',testMatch:'member-portal.spec.js',workers:1,timeout:60000,reporter:'list',use:{baseURL:process.env.FIXFLOW_UI_URL||'http://127.0.0.1:15175',channel:'chrome',headless:true,screenshot:'only-on-failure',trace:'retain-on-failure'}});

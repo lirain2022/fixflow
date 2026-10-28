@@ -1,6 +1,21 @@
 import {render,screen,fireEvent} from '@testing-library/react';
-import {it,expect} from 'vitest';
+import {it,expect,vi} from 'vitest';
 import Navigation from './Navigation';
+import {request} from '../system/api';
+import {saveHandoff,readHandoff} from '../system/landingHandoff';
+vi.mock('../system/api',async original=>({...await original(),request:vi.fn()}));
+it('header logout clears the member draft and preserves the separate admin login',async()=>{
+ sessionStorage.setItem('fixflow.session.v1',JSON.stringify({token:'member-token'}));
+ sessionStorage.setItem('fixflow.admin-session.v1',JSON.stringify({token:'admin-token'}));
+ saveHandoff({title:'私人報修',description:'私人地址',location:'住家',category:'OTHER',priority:'LOW'});
+ request.mockResolvedValue({name:'會員甲',role:'CUSTOMER'});
+ render(<Navigation/>);
+ fireEvent.click(await screen.findByRole('button',{name:'登出',exact:true}));
+ expect(readHandoff()).toBeNull();
+ expect(sessionStorage.getItem('fixflow.session.v1')).toBeNull();
+ expect(JSON.parse(sessionStorage.getItem('fixflow.admin-session.v1')).token).toBe('admin-token');
+ sessionStorage.clear();
+});
 it('opens service links by click and closes by Escape with focus restored',()=>{
  render(<Navigation/>);
  const trigger=screen.getByRole('button',{name:'服務項目'});

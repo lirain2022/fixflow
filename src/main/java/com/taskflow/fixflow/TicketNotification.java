@@ -12,4 +12,5 @@ public class TicketNotification {
     @Column(nullable=false,length=200) public String message;
     @Column(nullable=false) public Instant createdAt=Instant.now();
     public Instant readAt;
+    public Long partRequestId;
 }

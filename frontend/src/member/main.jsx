@@ -1,0 +1,1 @@
+import {createRoot} from 'react-dom/client';import MemberApp from './MemberApp';import '../landing/style.css';import '../landing/pages.css';import './member.css';createRoot(document.getElementById('root')).render(<MemberApp/>);

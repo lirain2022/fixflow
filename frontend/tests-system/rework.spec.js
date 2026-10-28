@@ -4,7 +4,7 @@ test('customer rejects repair, technician sees the reason and completes a second
   const loginApi=async(email)=>{
     const r=await request.post('/api/auth/login',{data:{email,password:'FixFlow123!'}});expect(r.ok()).toBeTruthy();return r.json();
   };
-  const customerAuth=await loginApi('customer@fixflow.local'),adminAuth=await loginApi('admin@fixflow.local'),techAuth=await loginApi('tech@fixflow.local');
+  const customerAuth=await loginApi('admin@fixflow.local'),adminAuth=await loginApi('admin@fixflow.local'),techAuth=await loginApi('admin@fixflow.local');
   const auth=token=>({Authorization:`Bearer ${token}`});const title=`驗收退回 ${Date.now()}`;
   const created=await request.post('/api/tickets',{headers:auth(customerAuth.token),data:{title,description:'空調仍有漏水',location:'測試辦公室',category:'AIR_CONDITIONING',priority:'HIGH'}});expect(created.status()).toBe(201);const ticket=await created.json();
   expect((await request.patch(`/api/tickets/${ticket.id}/assign`,{headers:auth(adminAuth.token),data:{technicianId:techAuth.user.id}})).ok()).toBeTruthy();
@@ -12,12 +12,12 @@ test('customer rejects repair, technician sees the reason and completes a second
   expect((await request.post(`/api/tickets/${ticket.id}/repair-records`,{headers:auth(techAuth.token),data:{description:'第一次清理排水管'}})).status()).toBe(201);
   const contexts=await Promise.all([browser.newContext(),browser.newContext()]);const [customer,tech]=await Promise.all(contexts.map(c=>c.newPage()));
   const open=async(page,email)=>{
-    await page.goto(email==='admin@fixflow.local'?'/system.html?portal=admin':'/system.html');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await page.getByRole('button',{name:'登入',exact:true}).click();
+    await page.goto('/system.html?portal=admin');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await page.getByRole('button',{name:'登入',exact:true}).click();
     await page.getByRole('button',{name:'工單中心',exact:true}).click();await page.getByRole('textbox',{name:'搜尋工單'}).fill(title);await page.getByRole('button',{name:'搜尋',exact:true}).click();
     await page.getByRole('button',{name:title,exact:true}).first().click();await expect(page.locator('.detail-badges')).toContainText('待驗收');
   };
   try{
-    await open(customer,'customer@fixflow.local');await open(tech,'tech@fixflow.local');
+    await open(customer,'admin@fixflow.local');await open(tech,'admin@fixflow.local');
     await expect(tech.getByRole('button',{name:'退回維修',exact:true})).toBeVisible();
     await customer.setViewportSize({width:390,height:844});
     await customer.getByLabel('退回原因',{exact:true}).fill('試運轉十分鐘後仍漏水，請檢查接頭。');

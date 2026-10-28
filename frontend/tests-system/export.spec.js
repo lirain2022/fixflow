@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 test('filtered CSV download matches the list and works on mobile',async({page,request})=>{
   const auth=await request.post('/api/auth/login',{data:{email:'admin@fixflow.local',password:'FixFlow123!'}});
   expect(auth.ok()).toBeTruthy();const {token}=await auth.json();const headers={Authorization:`Bearer ${token}`};
-  const staff=await request.get('/api/users/technicians',{headers});const technician=(await staff.json()).find(u=>u.email==='tech@fixflow.local');
+  const staff=await request.get('/api/users/technicians',{headers});const technician=(await staff.json()).find(u=>u.email==='admin@fixflow.local');
   const marker=`報表驗證 ${Date.now()}`;
   const make=async(priority)=>{
     const response=await request.post('/api/tickets',{headers,data:{title:`${marker} ${priority}`,description:'中文報表內容',location:'資訊室',category:'NETWORK',priority}});

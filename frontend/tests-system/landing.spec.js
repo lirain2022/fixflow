@@ -10,7 +10,7 @@ test('full report survives reload and login before real submission',async({page}
  await expect(page.getByLabel('問題標題')).toHaveValue(title);
  await expect(page.getByLabel('問題分類')).toHaveValue('NETWORK');
  await page.getByRole('button',{name:'下一步：確認報修'}).click();
- await expect(page).toHaveURL(/system.html\?action=new$/);
+ await expect(page).toHaveURL(/member.html\?next=report$/);
  await page.getByLabel('Email',{exact:true}).fill('customer@fixflow.local');
  await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');
  await page.getByRole('button',{name:'登入',exact:true}).click();
@@ -18,7 +18,7 @@ test('full report survives reload and login before real submission',async({page}
  await expect(page.getByLabel('問題描述')).toHaveValue('Wi-Fi 持續斷線，無法連接');
  await expect(page.getByLabel('報修位置')).toHaveValue('總部 2F');
  if(await page.getByRole('button',{name:'恢復草稿',exact:true}).isVisible())await page.getByRole('button',{name:'恢復草稿',exact:true}).click();
- const response=page.waitForResponse(r=>r.url().endsWith('/api/tickets')&&r.request().method()==='POST');
+ const response=page.waitForResponse(r=>r.url().endsWith('/api/member/tickets')&&r.request().method()==='POST');
  await page.getByRole('button',{name:'送出報修',exact:true}).click();
  const saved=await response;expect(saved.ok()).toBe(true);
  const ticket=await saved.json();expect(ticket.title).toBe(title);expect(ticket.category).toBe('NETWORK');expect(ticket.priority).toBe('HIGH');
@@ -58,19 +58,19 @@ test('mobile menu and forms fit narrow screens with reduced motion',async({page}
 test('progress shortcut resumes after member login and selects created tickets',async({page})=>{
  await page.goto('/');
  await page.getByRole('link',{name:'查詢維修進度',exact:true}).first().click();
- await expect(page).toHaveURL(/system.html\?view=tickets$/);
+ await expect(page).toHaveURL(/member.html\?next=tickets$/);
  await page.getByLabel('Email',{exact:true}).fill('customer@fixflow.local');
  await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');
  await page.getByRole('button',{name:'登入',exact:true}).click();
- await expect(page.getByRole('heading',{name:'我的工單',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'我建立的',exact:true})).toHaveAttribute('aria-pressed','true');
- await page.reload();await expect(page.getByRole('heading',{name:'我的工單',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'我的報修',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'派工中心',exact:true})).toHaveCount(0);
+ await page.reload();await expect(page.getByRole('heading',{name:'我的報修',exact:true})).toBeVisible();
 });
 
 test('fees and FAQs are readable and keyboard accessible on mobile',async({page})=>{
  await page.setViewportSize({width:320,height:844});await page.emulateMedia({reducedMotion:'reduce'});
  await page.goto('/#fees');await expect(page.getByRole('heading',{name:'人工費',exact:true})).toBeInViewport();
- await expect(page.getByRole('link',{name:'查看我的工單費用'})).toHaveAttribute('href','/system.html?view=tickets');
+ await expect(page.getByRole('link',{name:'查看我的工單費用'})).toHaveAttribute('href','/member.html?next=tickets');
  const question=page.locator('summary').filter({hasText:'費用在哪裡看？'});
  await question.focus();await page.keyboard.press('Enter');
  await expect(question.locator('..')).toHaveAttribute('open','');

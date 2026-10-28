@@ -39,7 +39,9 @@ public class SecurityConfig {
     @Bean SecurityFilterChain security(HttpSecurity http,UserRepository users) throws Exception {
         return http.csrf(c->c.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(a->a.requestMatchers("/api/auth/**","/hello","/swagger-ui/**","/swagger-ui.html","/v3/api-docs/**","/error").permitAll()
-                .requestMatchers("/api/tasks/**").hasRole("ADMIN").anyRequest().authenticated())
+                .requestMatchers("/api/users/me","/api/users/me/password").authenticated()
+                .requestMatchers("/api/member/**").hasAnyRole("CUSTOMER","TECHNICIAN")
+                .requestMatchers("/api/**").hasRole("ADMIN").anyRequest().authenticated())
             .exceptionHandling(e->e.authenticationEntryPoint((req,res,ex)->{res.setStatus(401);res.setContentType("application/json;charset=UTF-8");res.getWriter().write("{\"message\":\"請重新登入\"}");})
                 .accessDeniedHandler((req,res,ex)->{res.setStatus(403);res.setContentType("application/json;charset=UTF-8");res.getWriter().write("{\"message\":\"沒有操作權限\"}");}))
             .oauth2ResourceServer(o->o.jwt(j->j.jwtAuthenticationConverter(jwt->{

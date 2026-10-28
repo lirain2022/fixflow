@@ -22,6 +22,11 @@ public class NotificationService {
             TicketNotification notification=new TicketNotification();notification.ticket=ticket;notification.recipient=user;notification.kind=kind;notification.message=message;notifications.save(notification);
         }
     }
+    @Transactional(propagation=Propagation.MANDATORY)
+    public void partRequest(Ticket ticket,User actor,Long requestId,boolean reply,String message){
+        List<User> recipients=reply?List.of(ticket.createdBy):users.findByRoleAndEnabledTrueOrderByName(Role.ADMIN);
+        for(User user:recipients)if(user.isEnabled()&&!user.getId().equals(actor.id)){TicketNotification n=new TicketNotification();n.ticket=ticket;n.recipient=user;n.kind=reply?"PART_REPLY":"PART_REQUEST";n.message=message;n.partRequestId=requestId;notifications.save(n);}
+    }
     @Transactional(readOnly=true)
     public Map<String,Object> list(User actor,int page,int size,boolean unreadOnly){
         if(page<0||size<1||size>100)throw new ApiException(400,"分頁條件不正確");
@@ -33,6 +38,6 @@ public class NotificationService {
     public void read(User actor,Long id){if(notifications.markRead(actor.id,id,Instant.now())==0)throw ApiException.missing();}
     public void readAll(User actor){notifications.markAllRead(actor.id,Instant.now());}
     private Map<String,Object> view(TicketNotification n){
-        Map<String,Object> result=new LinkedHashMap<>();result.put("id",n.id);result.put("ticketId",n.ticket.getId());result.put("ticketNo",n.ticket.getTicketNo());result.put("title",n.ticket.getTitle());result.put("kind",n.kind);result.put("message",n.message);result.put("createdAt",n.createdAt);result.put("readAt",n.readAt);return result;
+        Map<String,Object> result=new LinkedHashMap<>();result.put("id",n.id);result.put("partRequestId",n.partRequestId);result.put("ticketId",n.ticket.getId());result.put("ticketNo",n.ticket.getTicketNo());result.put("title",n.ticket.getTitle());result.put("kind",n.kind);result.put("message",n.message);result.put("createdAt",n.createdAt);result.put("readAt",n.readAt);return result;
     }
 }

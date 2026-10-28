@@ -1,6 +1,6 @@
 import {ArrowUpRight,ClipboardList,Coins,Package,ChevronDown} from 'lucide-react';
 
-export const progressUrl='/system.html?view=tickets';
+export const progressUrl='/member.html?next=tickets';
 const questions=[
  ['報修前需要準備什麼？','準備設備名稱、故障狀況與設備所在位置。若知道故障發生時間、錯誤訊息或對使用造成的影響，也可以一起寫進描述。'],
  ['報修一定要先建立設備嗎？','不用。可以先以一般報修建立工單，再於系統中補上或關聯設備；報修時先把設備名稱與位置寫清楚即可。'],

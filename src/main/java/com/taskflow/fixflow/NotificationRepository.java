@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.*;
 
 public interface NotificationRepository extends JpaRepository<TicketNotification,Long> {
     // Match TicketService visibility now, not just the permissions at delivery time.
-    String SCOPE="n.recipient.id=:userId and (n.recipient.role=com.taskflow.fixflow.Role.ADMIN or n.ticket.createdBy.id=:userId or n.ticket.assignedTo.id=:userId)";
+    String SCOPE="n.recipient.id=:userId and (n.recipient.role=com.taskflow.fixflow.Role.ADMIN or n.ticket.createdBy.id=:userId)";
     @EntityGraph(attributePaths={"ticket"})
     @Query("select n from TicketNotification n where "+SCOPE+" and (:unreadOnly=false or n.readAt is null)")
     Page<TicketNotification> feed(Long userId,boolean unreadOnly,Pageable pageable);

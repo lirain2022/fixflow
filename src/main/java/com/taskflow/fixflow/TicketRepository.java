@@ -3,6 +3,7 @@ import java.util.*;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.*;
 public interface TicketRepository extends JpaRepository<Ticket,Long>,JpaSpecificationExecutor<Ticket> {
+    boolean existsByIdAndCreatedById(Long id,Long createdById);
     boolean existsByAssetIdAndStatusIn(Long assetId,List<com.taskflow.entity.TicketStatus> statuses);
     @Query("select distinct t.asset.id from Ticket t where t.asset.id in :ids and t.status in :statuses")
     List<Long> activeAssetIds(List<Long> ids,List<com.taskflow.entity.TicketStatus> statuses);
