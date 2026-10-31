@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react';
 import {STATUS_LABELS} from '../tickets/constants';
-import {nextStep} from './MemberTicketDetail';
+
 
 export default function MemberTickets({api,onOpen,filters,onFiltersChange}){
  const {page,status,query,search}=filters;
@@ -32,9 +32,9 @@ export default function MemberTickets({api,onOpen,filters,onFiltersChange}){
    {filtered&&<button type="button" onClick={()=>onFiltersChange({page:0,status:'',query:'',search:''})}>清除篩選</button>}
   </form>
   {error?<p role="alert">{error} <button onClick={()=>setRevision(r=>r+1)}>重試</button></p>:!data?<p role="status">載入工單中…</p>:<>
-   {!data.items.length?<p className="member-muted">目前沒有符合條件的報修工單。</p>:data.items.map(ticket=><button className="member-ticket" key={ticket.id} onClick={()=>onOpen(ticket.id)}>
+   {!data.items.length?<p className="member-muted">目前沒有符合條件的報修工單。</p>:data.items.map(ticket=><button className="member-ticket member-ticket-compact" key={ticket.id} onClick={()=>onOpen(ticket.id)}>
     <div className="member-row"><small>{ticket.ticketNo}</small><span className="member-badge">{STATUS_LABELS[ticket.status]}</span></div>
-    <h3>{ticket.title}</h3><p>{ticket.location}</p><span>{nextStep[ticket.status]}</span><strong>查看進度 →</strong>
+    <div className="member-ticket-line"><h3>{ticket.title}</h3><span className="member-ticket-action">{ticket.status==='RESOLVED'?'前往驗收 →':'查看進度 →'}</span></div>
    </button>)}
    <div className="member-row"><span role="status">共 {data.total} 筆 · 第 {page+1} 頁</span><div>
     <button disabled={!page} onClick={()=>change({page:page-1})}>上一頁</button>

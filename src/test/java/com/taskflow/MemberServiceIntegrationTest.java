@@ -3,6 +3,31 @@ import java.net.URI;import java.net.http.*;import java.util.*;
 import org.junit.jupiter.api.Test;import org.springframework.beans.factory.annotation.Autowired;import org.springframework.boot.test.context.SpringBootTest;import org.springframework.test.context.ActiveProfiles;import org.springframework.core.env.Environment;import tools.jackson.databind.*;import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test") @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties={"spring.datasource.url=jdbc:h2:mem:member-tests;DB_CLOSE_DELAY=-1","spring.jpa.hibernate.ddl-auto=validate","fixflow.redis-enabled=false","fixflow.upload-dir=./target/member-test-uploads"})
 class MemberServiceIntegrationTest {
+ @Test void combinedReportSavesPartsAndRollsBackInvalidSubmission()throws Exception{
+  String owner=register(),other=register();
+  var input=new HashMap<String,Object>(Map.of("title","Combined repair","description","Broken laptop","location","Room","category","EQUIPMENT","priority","LOW"));
+  var part=Map.of("name","SSD","quantity",2,"purpose","More space","referenceUrl","https://example.com/ssd");
+  input.put("partRequests",List.of(part,Map.of("name","RAM","quantity",1,"purpose","Upgrade")));
+  var saved=ok("POST","/api/member/tickets",owner,input,201);long id=saved.path("id").asLong();
+  var parts=ok("GET","/api/member/tickets/"+id+"/part-requests",owner,null,200);
+  assertEquals(2,parts.size());assertEquals(2,parts.get(1).path("quantity").asInt());
+  assertEquals(0,saved.path("repairCostSummary").path("recordedTotal").asInt());
+  assertEquals(404,call("GET","/api/member/tickets/"+id+"/part-requests",other,null).statusCode());
+  long ticketsBefore=jdbc.queryForObject("select count(*) from ff_tickets",Long.class);
+  long partsBefore=jdbc.queryForObject("select count(*) from ff_part_requests",Long.class);
+  long noticesBefore=jdbc.queryForObject("select count(*) from ff_notifications",Long.class);
+  input.put("partRequests",List.of(part,Map.of("name","Cable","quantity",1,"purpose","Replace","referenceUrl","javascript:alert(1)")));
+  assertEquals(400,call("POST","/api/member/tickets",owner,input).statusCode());
+  assertEquals(ticketsBefore,jdbc.queryForObject("select count(*) from ff_tickets",Long.class));
+  assertEquals(partsBefore,jdbc.queryForObject("select count(*) from ff_part_requests",Long.class));
+  assertEquals(noticesBefore,jdbc.queryForObject("select count(*) from ff_notifications",Long.class));
+  for(Object invalid:List.of(Collections.nCopies(11,part),List.of(Map.of("name"," ","quantity",1,"purpose","Upgrade")),List.of(Map.of("name","RAM","quantity",0,"purpose","Upgrade")),Collections.singletonList(null))){
+   input.put("partRequests",invalid);assertEquals(400,call("POST","/api/member/tickets",owner,input).statusCode());
+   assertEquals(ticketsBefore,jdbc.queryForObject("select count(*) from ff_tickets",Long.class));
+  }
+  input.remove("partRequests");long plain=ok("POST","/api/member/tickets",owner,input,201).path("id").asLong();
+  assertEquals(0,ok("GET","/api/member/tickets/"+plain+"/part-requests",owner,null,200).size());
+ }
  @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
  @Test void activeTicketFilterUsesOwnedRowsBeforePagination()throws Exception{
   String owner=register(),other=register();

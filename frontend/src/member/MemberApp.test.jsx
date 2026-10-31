@@ -51,6 +51,9 @@ it('refreshes the summary immediately after accepting a repair',async()=>{
  fireEvent.click(await screen.findByRole('button',{name:/測試報修/}));
  fireEvent.click(await screen.findByRole('button',{name:'確認驗收',exact:true}));
  await screen.findByText('已結案，你仍可查閱維修紀錄與費用。');
+ expect(screen.queryByLabelText('報修狀態摘要')).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'← 返回我的報修'}));
+ await screen.findByRole('heading',{name:'我的報修'});
  const summary=screen.getByLabelText('報修狀態摘要');
  await waitFor(()=>expect(within(summary).getByText('已結案').parentElement).toHaveTextContent('1'));
 });

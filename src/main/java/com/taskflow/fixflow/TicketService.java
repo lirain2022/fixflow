@@ -10,8 +10,8 @@ import com.taskflow.entity.TicketStatus;
 @Service @Transactional
 public class TicketService {
     private final TicketRepository tickets;private final UserRepository users;private final EntryRepository entries;private final AttachmentRepository attachments;private final AssetRepository assets;
-    private final NotificationService notifications;
-    public TicketService(TicketRepository tickets,UserRepository users,EntryRepository entries,AttachmentRepository attachments,AssetRepository assets,NotificationService notifications){this.tickets=tickets;this.users=users;this.entries=entries;this.attachments=attachments;this.assets=assets;this.notifications=notifications;}
+    private final NotificationService notifications;private final RepairQuoteRepository quotes;
+    public TicketService(TicketRepository tickets,UserRepository users,EntryRepository entries,AttachmentRepository attachments,AssetRepository assets,NotificationService notifications,RepairQuoteRepository quotes){this.tickets=tickets;this.users=users;this.entries=entries;this.attachments=attachments;this.assets=assets;this.notifications=notifications;this.quotes=quotes;}
     public boolean visible(Ticket t,User actor){return actor.role==Role.ADMIN||t.createdBy.getId().equals(actor.id)||(t.assignedTo!=null&&t.assignedTo.getId().equals(actor.id));}
     public Ticket find(Long id,User actor,boolean lock){Ticket t=(lock?tickets.lockById(id):tickets.findById(id)).orElseThrow(ApiException::missing);if(!visible(t,actor))throw ApiException.missing();return t;}
     public void active(Ticket t){if(t.status==TicketStatus.CLOSED||t.status==TicketStatus.CANCELLED)throw new ApiException(409,"工單已結束，不能再修改");}
@@ -49,7 +49,7 @@ public class TicketService {
         // Lock the technician before the ticket, as in start/deactivation, so assignments cannot race disable.
         User technician=users.lockById(technicianId).filter(u->u.enabled).orElseThrow(()->new ApiException(400,"請選擇啟用中的處理人員"));
         Ticket t=find(id,actor,true);
-        
+
         if(expectedStatus!=null&&t.status!=expectedStatus)throw new ApiException(409,"工單已被其他人更新，請重新載入後確認指派");
         if(t.status!=TicketStatus.OPEN&&t.status!=TicketStatus.ASSIGNED)throw new ApiException(409,"只有待派工或已派工工單可以指派");
         if(t.assignedTo!=null&&t.assignedTo.getId().equals(technician.id))throw new ApiException(409,"已指派給此技師");
@@ -76,12 +76,14 @@ public class TicketService {
         if(next==TicketStatus.CLOSED){allowed=previous==TicketStatus.RESOLVED;}
         if(next==TicketStatus.CANCELLED){allowed=previous==TicketStatus.OPEN||previous==TicketStatus.ASSIGNED;}
         if(!allowed)throw new ApiException(409,"不允許此狀態轉換；維修完成請提交維修紀錄");
+        if(next==TicketStatus.IN_PROGRESS)requireQuoteAccepted(t);
         t.status=next;if(next==TicketStatus.IN_PROGRESS)t.startedAt=Instant.now();if(next==TicketStatus.CLOSED)t.closedAt=Instant.now();log(t,actor,previous+" → "+next);
         notifications.publish(t,actor,next.name(),switch(next){case IN_PROGRESS->"技師已開始維修";case CLOSED->"工單已確認結案";default->"工單已取消";});return detail(t);
     }
+    private void requireQuoteAccepted(Ticket t){quotes.findFirstByTicketIdOrderByIdDesc(t.id).ifPresent(q->{if(!q.status.equals("ACCEPTED"))throw new ApiException(409,"請先取得會員對最新維修報價的同意");});}
     public Map<String,Object> saveRepairDraft(Long id,User actor,Requests.RepairDraft input){
         Ticket t=find(id,actor,true);
-        
+
         if(t.status!=TicketStatus.IN_PROGRESS)throw new ApiException(409,"需先開始維修，才能儲存費用草稿");
         if(!Objects.equals(input.version(),t.version))throw new ApiException(409,"工單已更新，請重新開啟工單後確認費用");
         TicketEntry draft=entries.findByTicketIdOrderByIdAsc(id).stream().filter(e->e.kind.equals("REPAIR_DRAFT")).findFirst().orElseGet(()->entry(t,actor,"REPAIR_DRAFT",input.description()));
@@ -92,6 +94,7 @@ public class TicketService {
     public Map<String,Object> repair(Long id,User actor,Requests.Repair input){
         Ticket t=find(id,actor,true);
         if(t.status!=TicketStatus.IN_PROGRESS)throw new ApiException(409,"需先開始維修");
+        requireQuoteAccepted(t);
         var drafts=entries.findByTicketIdOrderByIdAsc(id).stream().filter(e->e.kind.equals("REPAIR_DRAFT")).toList();
         if((input.version()!=null&&!input.version().equals(t.version))||(!drafts.isEmpty()&&input.version()==null))throw new ApiException(409,"工單已更新，請重新開啟工單後確認費用");
         if(!drafts.isEmpty()&&(input.workHours()==null||input.laborCost()==null))throw new ApiException(400,"請確認草稿費用後再完成維修");
@@ -125,7 +128,7 @@ public class TicketService {
         // Same user -> ticket lock order as assignment/start/deactivation.
         User technician=tickets.findAssigneeId(id).flatMap(users::lockById).orElse(null);
         Ticket t=find(id,actor,true);
-        
+
         if(t.status!=TicketStatus.RESOLVED)throw new ApiException(409,"只有待確認的工單可以退回維修，請更新工單資料");
         if(t.assignedTo!=null&&(technician==null||!t.assignedTo.getId().equals(technician.id)))throw new ApiException(409,"負責技師已變更，請更新工單資料後重試");
         entry(t,actor,"REWORK",reason);

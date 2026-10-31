@@ -1,6 +1,10 @@
 import {test,expect} from '@playwright/test';
 test('full report survives reload and login before real submission',async({page})=>{
  await page.goto('/repair.html?service=network');
+ await page.getByLabel('Email',{exact:true}).fill('customer@fixflow.local');
+ await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');
+ await page.getByRole('button',{name:'登入',exact:true}).click();
+
  const title='網站報修 '+Date.now();
  await page.getByLabel('問題標題').fill(title);
  await page.getByLabel('問題描述').fill('Wi-Fi 持續斷線，無法連接');
@@ -9,11 +13,6 @@ test('full report survives reload and login before real submission',async({page}
  await page.reload();
  await expect(page.getByLabel('問題標題')).toHaveValue(title);
  await expect(page.getByLabel('問題分類')).toHaveValue('NETWORK');
- await page.getByRole('button',{name:'下一步：確認報修'}).click();
- await expect(page).toHaveURL(/member.html\?next=report$/);
- await page.getByLabel('Email',{exact:true}).fill('customer@fixflow.local');
- await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');
- await page.getByRole('button',{name:'登入',exact:true}).click();
  await expect(page.getByLabel('問題標題')).toHaveValue(title);
  await expect(page.getByLabel('問題描述')).toHaveValue('Wi-Fi 持續斷線，無法連接');
  await expect(page.getByLabel('報修位置')).toHaveValue('總部 2F');
@@ -48,6 +47,11 @@ test('mobile menu and forms fit narrow screens with reduced motion',async({page}
  await page.getByRole('button',{name:'開啟導覽'}).click();
  await page.getByRole('button',{name:'服務項目'}).click();
  await page.locator('#service-dropdown').getByRole('link').filter({hasText:'網路系統'}).click();
+ if(await page.getByLabel('Email',{exact:true}).isVisible()){
+ await page.getByLabel('Email',{exact:true}).fill('customer@fixflow.local');
+ await page.getByLabel('密碼',{exact:true}).fill('FixFlow123!');
+ await page.getByRole('button',{name:'登入',exact:true}).click();
+ }
  await expect(page.getByLabel('問題分類')).toHaveValue('NETWORK');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.screenshot({path:'test-results/repair-mobile-'+width+'.png',fullPage:true});

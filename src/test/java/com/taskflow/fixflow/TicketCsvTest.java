@@ -18,7 +18,7 @@ class TicketCsvTest {
         var repository=mock(TicketRepository.class);
         when(repository.findAll(org.mockito.ArgumentMatchers.<Specification<Ticket>>any(),any(Pageable.class)))
             .thenReturn(new PageImpl<>(List.of(new Ticket()),PageRequest.of(0,5001),5002));
-        var service=new TicketService(repository,null,null,null,null,null);
+        var service=new TicketService(repository,null,null,null,null,null,null);
         User actor=new User();actor.role=Role.ADMIN;
         var error=assertThrows(ApiException.class,()->service.export(actor,"",null,false,null,null,TicketOrder.NEWEST,TicketScope.ALL));
         assertTrue(error.getMessage().contains("5,000"));

@@ -6,6 +6,20 @@ function fields(value){
   const result={description:value.description,category:value.category};
   for(const [key,max] of [['title',120],['location',200]])if(value[key]!==undefined){if(typeof value[key]!=='string'||value[key].length>max)throw new Error('標題或位置超過字數限制。');result[key]=value[key];}
   if(value.priority!==undefined){if(!Object.hasOwn(PRIORITY_LABELS,value.priority))throw new Error('請選擇有效的優先級。');result.priority=value.priority;}
+  if(value.partRequests!==undefined){
+    if(!Array.isArray(value.partRequests)||value.partRequests.length>10)throw new Error('零件需求最多 10 項。');
+    result.partRequests=value.partRequests.map(part=>{
+      if(!part||typeof part!=='object')throw new Error('零件需求格式不正確。');
+      const item={};
+      for(const [key,max] of [['name',120],['purpose',2000],['referenceUrl',1000]]){
+        if(typeof part[key]!=='string'||part[key].length>max)throw new Error('請確認零件需求內容。');item[key]=part[key];
+      }
+      if(!['string','number'].includes(typeof part.quantity)||String(part.quantity).length>3)throw new Error('請確認零件數量。');
+      item.quantity=part.quantity;return item;
+    });
+  }
+  if(value.submissionState==='uncertain')result.submissionState='uncertain';
+  if(result.submissionState==='uncertain'&&value.submissionReviewRequested===true)result.submissionReviewRequested=true;
   return result;
 }
 export function saveHandoff(description='',category='OTHER'){

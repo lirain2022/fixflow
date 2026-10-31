@@ -10,6 +10,8 @@ public interface TicketRepository extends JpaRepository<Ticket,Long>,JpaSpecific
     // Scalar lookup avoids caching an unlocked Ticket before the authoritative locked read.
     @Query("select t.assignedTo.id from Ticket t where t.id=:id")
     Optional<Long> findAssigneeId(Long id);
+    @Query("select t.createdBy.id from Ticket t where t.id=:id")
+    Optional<Long> findCreatorId(Long id);
     @Query("select t.assignedTo.id, t.status, count(t) from Ticket t where t.assignedTo is not null and t.status in (com.taskflow.entity.TicketStatus.ASSIGNED, com.taskflow.entity.TicketStatus.IN_PROGRESS) group by t.assignedTo.id,t.status")
     List<Object[]> activeWorkload();
     @Query("select t.assignedTo.id, count(t) from Ticket t where t.assignedTo is not null and t.dueAt < :now and t.status in (com.taskflow.entity.TicketStatus.ASSIGNED, com.taskflow.entity.TicketStatus.IN_PROGRESS) group by t.assignedTo.id")
