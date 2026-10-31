@@ -1,6 +1,44 @@
 name: FixFlow checks
 on: [push, pull_request]
 jobs:
+  windows-launcher:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: powershell
+        working-directory: FixFlow portable
+    steps:
+      - uses: actions/checkout@v4
+        with: {path: 'FixFlow portable'}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '21'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Launcher behavior checks
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-Launcher.ps1
+      - name: First launch and repeated launch
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-FixFlow.ps1 -NoBrowser -TimeoutSeconds 600
+          if ($LASTEXITCODE -ne 0) { throw 'First launch failed' }
+          $before = Get-Content .fixflow/processes.json -Raw
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-FixFlow.ps1 -NoBrowser
+          if ($LASTEXITCODE -ne 0) { throw 'Repeated launch failed' }
+          if ($before -ne (Get-Content .fixflow/processes.json -Raw)) { throw 'Repeated launch restarted services' }
+      - name: Stop managed services
+        if: always()
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-FixFlow.ps1 -Action Stop
+          if ($LASTEXITCODE -ne 0) { throw 'Stop failed' }
+          Start-Sleep -Seconds 3
+          . ./scripts/FixFlow.Launcher.ps1
+          Assert-FixFlowPortsFree
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: windows-startup-logs
+          path: 'FixFlow portable/.fixflow/logs/'
+          include-hidden-files: true
   verify:
     runs-on: ubuntu-latest
     services:

@@ -1,11 +1,11 @@
 import {test,expect} from '@playwright/test';
-test('administrator quotes, member asks and accepts revised quote, actual fees stay separate',async({page,browser,request})=>{
+test('administrator quotes, member asks and accepts revised quote, actual fees stay separate',async({page,browser,request,baseURL})=>{
  const title='報價確認 '+Date.now(),email=`quote-${Date.now()}@example.com`;
  const registered=await request.post('/api/auth/register',{data:{name:'報價會員',email,password:'Quote12345!'}});expect(registered.status()).toBe(201);const {token}=await registered.json();
  const created=await request.post('/api/member/tickets',{headers:{Authorization:`Bearer ${token}`},data:{title,description:'筆電需要檢查',location:'台北辦公室',category:'EQUIPMENT',priority:'MEDIUM'}});expect(created.status()).toBe(201);
  await page.addInitScript(token=>sessionStorage.setItem('fixflow.session.v1',JSON.stringify({token})),token);
  async function openMember(){await page.goto('/member.html?next=tickets');await page.getByRole('button').filter({has:page.getByRole('heading',{name:title,exact:true})}).click();}
- const admin=await browser.newPage();await admin.goto(new URL('/system.html?portal=admin',page.url()==='about:blank'?'http://127.0.0.1:16175':page.url()).href);
+ const admin=await browser.newPage({baseURL});await admin.goto('/system.html?portal=admin');
  await admin.getByLabel('Email',{exact:true}).fill('admin@fixflow.local');await admin.getByLabel('密碼',{exact:true}).fill('FixFlow123!');await admin.getByRole('button',{name:'登入',exact:true}).click();
  async function openAdmin(){await admin.getByRole('button',{name:'工單中心',exact:true}).click();await admin.getByRole('button',{name:title,exact:true}).first().click();await admin.locator('.quote-panel>summary').click();}
  await openAdmin();await admin.getByRole('button',{name:'建立報價'}).click();await admin.getByLabel('預估人工費（NT$）').fill('100.10');await admin.getByLabel('預估零件費（NT$）').fill('200.20');await admin.getByLabel('報價說明').fill('更換 SSD 並測試，含人工與零件');await admin.getByRole('button',{name:'送出報價',exact:true}).click();await expect(admin.locator('.quote-summary')).toContainText('300.30');await admin.locator('.quote-panel').screenshot({path:'test-results/quote-admin.png'});

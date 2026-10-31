@@ -65,3 +65,6 @@ frontend/playwright-report/
 *.zip
 
 /target-cost/
+
+# Local launcher processes, dependency stamp and logs
+/.fixflow/
